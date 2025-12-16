@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
   Sparkles,
@@ -16,12 +16,34 @@ import Navbar from '@/components/Navbar.vue'
 import logoImage from '@/assets/foody_logo.png'
 import defaultFoodyImage from '@/assets/characters/ssassak_foody.png'
 import foodyEggImage from '@/assets/characters/foody_egg.png'
+import { useAuthStore } from '@/stores/auth'
 
-const isLoggedIn = ref(false)
+const authStore = useAuthStore()
 
-onMounted(() => {
-  const loggedIn = localStorage.getItem('isLoggedIn') === 'true'
-  isLoggedIn.value = loggedIn
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+const user = computed(() => authStore.user)
+
+onMounted(async () => {
+  await authStore.loadFromStorage()
+})
+
+// 백엔드에서 계산된 표준 영양정보 사용 (값 그대로)
+const recommendedNutrition = computed(() => {
+  if (!user.value) return null
+  
+  const userInfo = user.value as any // UserResponse with StdInfo
+  
+  console.log('User for nutrition:', userInfo) // 디버깅용
+  
+  return {
+    weight: userInfo.stdWeight || userInfo.weight || 0,
+    calories: userInfo.stdKcal || 0,
+    carbs: userInfo.stdCarb || 0,
+    protein: userInfo.stdProtein || 0,
+    fat: userInfo.stdFat || 0,
+    sugar: userInfo.stdSugar || 0,
+    sodium: userInfo.stdNatrium || 0
+  }
 })
 
 const currentFoodyImage = computed(() =>
@@ -105,17 +127,28 @@ const currentFoodyImage = computed(() =>
                 <h3 class="text-gray-800">나의 권장 영양 정보</h3>
               </div>
 
-              <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div v-if="user?.role === 'ROLE_GUEST'" class="bg-amber-50 rounded-xl p-8 text-center border border-amber-200">
+                <div class="flex flex-col items-center justify-center gap-2">
+                  <span class="text-3xl">⚠️</span>
+                  <p class="text-amber-700 font-medium text-lg">기본 정보 입력이 필요합니다.</p>
+                  <RouterLink to="/my-page" class="text-sm text-amber-600 underline hover:text-amber-800 transition-colors mt-1">
+                    내 정보 입력하러 가기 &rarr;
+                  </RouterLink>
+                </div>
+              </div>
+
+              <div v-else class="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <!-- 영양 정보 카드들 -->
                 <div
+                  v-if="recommendedNutrition"
                   v-for="(item, idx) in [
-                    { icon: Scale, label: '몸무게', value: '65', unit: 'kg', color: 'blue' },
-                    { icon: Flame, label: '칼로리', value: '2000', unit: 'kcal', color: 'orange' },
-                    { icon: Wheat, label: '탄수화물', value: '250', unit: 'g', color: 'amber' },
-                    { icon: Beef, label: '단백질', value: '60', unit: 'g', color: 'red' },
-                    { icon: Droplet, label: '지방', value: '50', unit: 'g', color: 'yellow' },
-                    { icon: Candy, label: '당', value: '50', unit: 'g', color: 'pink' },
-                    { label: '나트륨', value: '2', unit: 'g', color: 'purple', emoji: '🧂' }
+                    { icon: Scale, label: '몸무게', value: recommendedNutrition.weight, unit: 'kg', color: 'blue' },
+                    { icon: Flame, label: '칼로리', value: recommendedNutrition.calories, unit: 'kcal', color: 'orange' },
+                    { icon: Wheat, label: '탄수화물', value: recommendedNutrition.carbs, unit: 'g', color: 'amber' },
+                    { icon: Beef, label: '단백질', value: recommendedNutrition.protein, unit: 'g', color: 'red' },
+                    { icon: Droplet, label: '지방', value: recommendedNutrition.fat, unit: 'g', color: 'yellow' },
+                    { icon: Candy, label: '당', value: recommendedNutrition.sugar, unit: 'g', color: 'pink' },
+                    { label: '나트륨', value: recommendedNutrition.sodium, unit: 'g', color: 'purple', emoji: '🧂' }
                   ]"
                   :key="item.label"
                   v-motion

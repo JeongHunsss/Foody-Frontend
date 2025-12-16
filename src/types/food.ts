@@ -1,5 +1,5 @@
 export interface Food {
-    id: string;
+    code: string;
     name: string;
     category: string;
     servingSize: string; // 기준량
