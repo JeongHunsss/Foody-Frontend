@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { Search, X, Plus, Heart, ChevronLeft, ChevronRight, Upload } from 'lucide-vue-next'
-import { mockFoods, categories } from '@/data/mockFoods'
+import { foodApi } from '@/api/food.api'
 import type { Food, MealTime } from '@/types/food'
 import AddFoodManually from './AddFoodManually.vue'
 import AddFoodByImage from './AddFoodByImage.vue'
@@ -37,7 +37,72 @@ const customFoods = ref<Food[]>([])
 const showManualAdd = ref(false)
 const showImageAdd = ref(false)
 
-onMounted(() => {
+// API에서 가져온 음식 목록
+const apiFoods = ref<Food[]>([])
+const isLoading = ref(false)
+
+// 카테고리 목록 (API에서 로드)
+const categories = ref<string[]>([])
+
+// 음식 목록 불러오기
+const loadFoods = async (resetPage = false) => {
+  if (resetPage) {
+    currentPage.value = 1
+  }
+  
+  isLoading.value = true
+  try {
+    // 특별 카테고리는 API 호출하지 않음
+    if (selectedCategory.value === '찜한 음식' || selectedCategory.value === '직접 입력') {
+      apiFoods.value = []
+      totalPages.value = 1
+      isLoading.value = false
+      return
+    }
+    
+    // API 카테고리 파라미터 설정
+    const categoryParam = selectedCategory.value === '전체' ? undefined : selectedCategory.value
+    
+    const response = await foodApi.getFoodList(currentPage.value, searchQuery.value, categoryParam)
+    console.log('API Response:', response) // 디버깅용
+    
+    // 페이지네이션 정보 업데이트
+    totalPages.value = response.totalPages
+    
+    // getFoodList는 FoodListResponse 반환
+    apiFoods.value = response.content.map((item: any) => ({
+      id: item.code, // code를 id로 사용
+      code: item.code,
+      name: item.name,
+      category: item.category || '기타',
+      servingSize: `${item.standard}`, // standard 필드 사용
+      calories: item.kcal,
+      carbs: item.carb, // carb 필드 사용
+      protein: item.protein,
+      fat: item.fat,
+      sugar: item.sugar,
+      sodium: item.natrium // natrium 필드 사용
+    }))
+    console.log('Converted foods:', apiFoods.value) // 디버깅용
+    console.log('Total pages:', totalPages.value) // 디버깅용
+  } catch (error) {
+    console.error('Failed to load foods:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 카테고리 목록 불러오기
+const loadCategories = async () => {
+  try {
+    categories.value = await foodApi.getCategories()
+  } catch (error) {
+    console.error('Failed to load categories:', error)
+  }
+}
+
+onMounted(async () => {
+  // 찜한 음식 & 커스텀 음식 불러오기
   const savedFavorites = localStorage.getItem('favoriteFoods')
   if (savedFavorites) {
     favoriteFoods.value = JSON.parse(savedFavorites)
@@ -47,6 +112,24 @@ onMounted(() => {
   if (savedCustomFoods) {
     customFoods.value = JSON.parse(savedCustomFoods)
   }
+
+  // 음식 목록 및 카테고리 불러오기
+  await Promise.all([loadFoods(), loadCategories()])
+})
+
+// 검색어 변경시 재로드
+watch(searchQuery, async () => {
+  await loadFoods(true) // 페이지 리셋
+})
+
+// 카테고리 변경시 재로드
+watch(selectedCategory, async () => {
+  await loadFoods(true) // 페이지 리셋
+})
+
+// 페이지 변경시 재로드
+watch(currentPage, async () => {
+  await loadFoods()
 })
 
 const toggleFavorite = (foodId: string) => {
@@ -58,31 +141,62 @@ const toggleFavorite = (foodId: string) => {
   localStorage.setItem('favoriteFoods', JSON.stringify(favoriteFoods.value))
 }
 
-// 전체 음식 목록 (mockFoods + customFoods)
-const allFoods = computed(() => [...mockFoods, ...customFoods.value])
-
-const filteredFoods = computed(() => {
-  return allFoods.value.filter(food => {
-    const matchesSearch = food.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    
-    if (selectedCategory.value === '찜한 음식') {
-      return matchesSearch && favoriteFoods.value.includes(food.id)
-    } else if (selectedCategory.value === '직접 입력') {
-      return matchesSearch && customFoods.value.some(cf => cf.id === food.id)
-    } else if (selectedCategory.value === '전체') {
-      return matchesSearch
-    } else {
-      return matchesSearch && food.category === selectedCategory.value
-    }
-  })
+// 전체 음식 목록 (API + customFoods)
+const allFoods = computed(() => {
+  // 특별 카테고리 처리
+  if (selectedCategory.value === '찜한 음식') {
+    // 찜한 음식만 표시 (apiFoods와 customFoods 모두에서)
+    return [...customFoods.value, ...apiFoods.value].filter(food => 
+      favoriteFoods.value.includes(food.id || food.code)
+    )
+  }
+  
+  if (selectedCategory.value === '직접 입력') {
+    // 직접 입력한 음식만 표시
+    return customFoods.value
+  }
+  
+  // 일반 카테고리(전체 포함) - API 결과만 표시
+  return apiFoods.value
 })
 
-const totalPages = computed(() => Math.ceil(filteredFoods.value.length / ITEMS_PER_PAGE))
-const startIndex = computed(() => (currentPage.value - 1) * ITEMS_PER_PAGE)
-const endIndex = computed(() => startIndex.value + ITEMS_PER_PAGE)
-const currentFoods = computed(() => filteredFoods.value.slice(startIndex.value, endIndex.value))
+const filteredFoods = computed(() => {
+  // 필터링은 이미 allFoods와 API에서 처리됨
+  return allFoods.value
+})
 
-watch([searchQuery, selectedCategory], () => {
+// 페이지네이션 - 백엔드에서 받은 totalPages 사용
+const totalPages = ref(1)
+const currentFoods = computed(() => filteredFoods.value)
+
+// 표시할 페이지 번호 계산 (최대 5개)
+const displayedPages = computed(() => {
+  const pages: (number | string)[] = []
+  const maxDisplay = 5
+  const start = Math.max(1, currentPage.value - 2)
+  const end = Math.min(totalPages.value, start + maxDisplay - 1)
+  
+  // 첫 페이지
+  if (start > 1) {
+    pages.push(1)
+    if (start > 2) pages.push('...')
+  }
+  
+  // 중간 페이지들
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+  
+  // 마지막 페이지
+  if (end < totalPages.value) {
+    if (end < totalPages.value - 1) pages.push('...')
+    pages.push(totalPages.value)
+  }
+  
+  return pages
+})
+
+watch(selectedCategory, () => {
   currentPage.value = 1
 })
 
@@ -264,7 +378,7 @@ const handleImageAdd = (food: Food, amount: number) => {
                   <span>칼로리</span>
                   <span class="text-emerald-600">{{ food.calories }}kcal</span>
                 </div>
-                <div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-emerald-100">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 pt-2 border-t border-emerald-100">
                   <div>
                     <div class="text-xs text-gray-500">탄수화물</div>
                     <div class="text-blue-600">{{ food.carbs }}g</div>
@@ -276,6 +390,14 @@ const handleImageAdd = (food: Food, amount: number) => {
                   <div>
                     <div class="text-xs text-gray-500">지방</div>
                     <div class="text-yellow-600">{{ food.fat }}g</div>
+                  </div>
+                  <div>
+                    <div class="text-xs text-gray-500">당</div>
+                    <div class="text-purple-600">{{ food.sugar }}g</div>
+                  </div>
+                  <div>
+                    <div class="text-xs text-gray-500">나트륨</div>
+                    <div class="text-orange-600">{{ food.sodium }}g</div>
                   </div>
                 </div>
               </div>
@@ -324,22 +446,24 @@ const handleImageAdd = (food: Food, amount: number) => {
               <ChevronLeft :size="20" />
             </button>
 
-            <button
-              v-for="page in totalPages"
-              :key="page"
-              v-motion
-              :hovered="{ scale: 1.1 }"
-              :tapped="{ scale: 0.9 }"
-              @click="currentPage = page"
-              :class="[
-                'w-10 h-10 rounded-lg transition-colors',
-                currentPage === page
-                  ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              ]"
-            >
-              {{ page }}
-            </button>
+            <template v-for="(page, index) in displayedPages" :key="index">
+              <span v-if="page === '...'" class="px-2 text-gray-400">...</span>
+              <button
+                v-else
+                v-motion
+                :hovered="{ scale: 1.1 }"
+                :tapped="{ scale: 0.9 }"
+                @click="currentPage = page as number"
+                :class="[
+                  'w-10 h-10 rounded-lg transition-colors',
+                  currentPage === page
+                    ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ]"
+              >
+                {{ page }}
+              </button>
+            </template>
 
             <button
               v-motion
