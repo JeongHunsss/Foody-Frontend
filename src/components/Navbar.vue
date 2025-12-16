@@ -1,32 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { User, LogOut, LogIn, Shield } from 'lucide-vue-next'
 import logoImage from '@/assets/foody_logo.png'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
-const isLoggedIn = ref(true)
-const isAdmin = ref(false)
-
-onMounted(() => {
-  const loggedIn = localStorage.getItem('isLoggedIn')
-  if (loggedIn !== null) {
-    isLoggedIn.value = loggedIn === 'true'
-  } else {
-    localStorage.setItem('isLoggedIn', 'true')
-    isLoggedIn.value = true
-  }
-
-  const userRole = localStorage.getItem('userRole') || 'USER'
-  isAdmin.value = userRole === 'ADMIN'
-})
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+const isAdmin = computed(() => authStore.isAdmin)
+const userName = computed(() => authStore.user?.name || '마이페이지')
 
 const handleLogout = () => {
   if (window.confirm('로그아웃 하시겠습니까?')) {
-    localStorage.removeItem('isLoggedIn')
-    isLoggedIn.value = false
+    authStore.logout()
     router.push('/')
   }
 }
@@ -98,9 +87,10 @@ const isActive = (path: string) => {
               ]"
             >
               <User :size="20" />
-              <span>마이페이지</span>
+              <span>{{ userName }}</span>
             </button>
             <button
+              v-if="isAdmin"
               @click="router.push('/admin')"
               :class="[
                 'flex items-center gap-2 px-4 py-2 rounded-xl transition-all',
@@ -120,14 +110,21 @@ const isActive = (path: string) => {
               <span>로그아웃</span>
             </button>
           </template>
-          <button
-            v-else
-            @click="router.push('/login')"
-            class="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all"
-          >
-            <LogIn :size="20" />
-            <span>로그인</span>
-          </button>
+          <div v-else class="flex items-center gap-2">
+            <button
+              @click="router.push('/login')"
+              class="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all"
+            >
+              <LogIn :size="20" />
+              <span>로그인</span>
+            </button>
+            <button
+              @click="router.push('/signup')"
+              class="px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all font-medium"
+            >
+              회원가입
+            </button>
+          </div>
         </div>
       </div>
     </div>
