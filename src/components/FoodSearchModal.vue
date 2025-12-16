@@ -71,7 +71,6 @@ const loadFoods = async (resetPage = false) => {
     
     // getFoodList는 FoodListResponse 반환
     apiFoods.value = response.content.map((item: any) => ({
-      id: item.code, // code를 id로 사용
       code: item.code,
       name: item.name,
       category: item.category || '기타',
@@ -132,11 +131,11 @@ watch(currentPage, async () => {
   await loadFoods()
 })
 
-const toggleFavorite = (foodId: string) => {
-  if (favoriteFoods.value.includes(foodId)) {
-    favoriteFoods.value = favoriteFoods.value.filter(id => id !== foodId)
+const toggleFavorite = (foodCode: string) => {
+  if (favoriteFoods.value.includes(foodCode)) {
+    favoriteFoods.value = favoriteFoods.value.filter(code => code !== foodCode)
   } else {
-    favoriteFoods.value = [...favoriteFoods.value, foodId]
+    favoriteFoods.value = [...favoriteFoods.value, foodCode]
   }
   localStorage.setItem('favoriteFoods', JSON.stringify(favoriteFoods.value))
 }
@@ -146,8 +145,10 @@ const allFoods = computed(() => {
   // 특별 카테고리 처리
   if (selectedCategory.value === '찜한 음식') {
     // 찜한 음식만 표시 (apiFoods와 customFoods 모두에서)
+    // customFoods는 id를 쓸 수도 있지만 API 호환성을 위해 code로 통일하는 것이 좋음 
+    // (여기서는 customFoods 타입을 확인해야 하지만, 일단 code로 시도)
     return [...customFoods.value, ...apiFoods.value].filter(food => 
-      favoriteFoods.value.includes(food.id || food.code)
+      favoriteFoods.value.includes(food.code)
     )
   }
   
@@ -200,13 +201,13 @@ watch(selectedCategory, () => {
   currentPage.value = 1
 })
 
-const getFoodAmount = (foodId: string) => {
-  return foodAmounts.value[foodId] || 100
+const getFoodAmount = (foodCode: string) => {
+  return foodAmounts.value[foodCode] || 100
 }
 
-const setFoodAmount = (foodId: string, amount: number) => {
+const setFoodAmount = (foodCode: string, amount: number) => {
   if (amount >= 1 && amount <= 10000) {
-    foodAmounts.value[foodId] = amount
+    foodAmounts.value[foodCode] = amount
   }
 }
 
@@ -340,7 +341,7 @@ const handleImageAdd = (food: Food, amount: number) => {
           <div class="grid md:grid-cols-2 gap-4 mb-6">
             <div
               v-for="food in currentFoods"
-              :key="food.id"
+              :key="food.code"
               v-motion
               :initial="{ opacity: 0, y: 20 }"
               :enter="{ opacity: 1, y: 0 }"
@@ -357,13 +358,13 @@ const handleImageAdd = (food: Food, amount: number) => {
                   v-motion
                   :hovered="{ scale: 1.1 }"
                   :tapped="{ scale: 0.9 }"
-                  @click="toggleFavorite(food.id)"
+                  @click="toggleFavorite(food.code)"
                   class="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
                 >
                   <Heart
                     :size="20"
                     :class="[
-                      favoriteFoods.includes(food.id) ? 'text-red-500 fill-red-500' : 'text-gray-400'
+                      favoriteFoods.includes(food.code) ? 'text-red-500 fill-red-500' : 'text-gray-400'
                     ]"
                   />
                 </button>
@@ -412,8 +413,8 @@ const handleImageAdd = (food: Food, amount: number) => {
                       min="1"
                       max="10000"
                       step="1"
-                      :value="getFoodAmount(food.id)"
-                      @input="setFoodAmount(food.id, parseFloat(($event.target as HTMLInputElement).value) || 100)"
+                      :value="getFoodAmount(food.code)"
+                      @input="setFoodAmount(food.code, parseFloat(($event.target as HTMLInputElement).value) || 100)"
                       class="w-20 px-3 py-2 border border-emerald-200 rounded-lg focus:outline-none focus:border-emerald-500 text-center"
                     />
                     <span class="text-sm text-gray-600">g</span>
@@ -423,7 +424,7 @@ const handleImageAdd = (food: Food, amount: number) => {
                   v-motion
                   :hovered="{ scale: 1.05 }"
                   :tapped="{ scale: 0.95 }"
-                  @click="handleAddFood(food, getFoodAmount(food.id))"
+                  @click="handleAddFood(food, getFoodAmount(food.code))"
                   class="px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:shadow-lg transition-shadow flex items-center gap-2 mt-5"
                 >
                   <Plus :size="16" />
