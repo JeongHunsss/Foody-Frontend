@@ -7,6 +7,7 @@ import FoodSearchModal from '@/components/FoodSearchModal.vue'
 import AnalysisChoiceModal from '@/components/AnalysisChoiceModal.vue'
 import AnalysisLoadingModal from '@/components/AnalysisLoadingModal.vue'
 import type { MealTime, Food, MealItem } from '@/types/food'
+import { showError } from '@/utils/errorHandler'
 
 interface MealData {
   breakfast: MealItem[]
@@ -117,16 +118,75 @@ const handleAnalyze = () => {
   isAnalysisChoiceModalOpen.value = true
 }
 
-const handleChooseAI = () => {
+const handleChooseAI = async () => {
   isAnalysisChoiceModalOpen.value = false
   isAnalysisLoadingModalOpen.value = true
   
-  // AI 분석 로직 - 시뮬레이션
-  setTimeout(() => {
+  try {
+    // Import report API
+    const { reportApi } = await import('@/api/report.api')
+    
+    // Build meal items array matching backend ReportRequest structure
+    const reportMeals: any[] = []
+    
+    const mealTypeMap: Record<string, 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK'> = {
+      breakfast: 'BREAKFAST',
+      lunch: 'LUNCH',
+      dinner: 'DINNER',
+      snack: 'SNACK'
+    }
+
+    Object.entries(meals.value).forEach(([mealTypeKey, items]) => {
+      if (items.length === 0) return
+
+      const foodItems = items.map((item) => {
+        const ratio = item.amount / 100
+        return {
+           foodCode: item.food.code,
+           name: item.food.name,
+           eatenWeight: item.amount,
+           // 영양소 계산 (비율 적용)
+           kcal: item.food.calories * ratio,
+           carb: item.food.carbs * ratio,
+           protein: item.food.protein * ratio,
+           fat: item.food.fat * ratio,
+           sugar: item.food.sugar * ratio,
+           natrium: item.food.sodium * ratio
+        }
+      })
+
+      reportMeals.push({
+        mealType: mealTypeMap[mealTypeKey],
+        foods: foodItems
+      })
+    })
+    
+    // Submit to API
+    await reportApi.createReport({ 
+      isWaited: false, // AI 바로 분석
+      meals: reportMeals 
+    })
+    
+    // Clear local storage
+    localStorage.removeItem('currentMeals')
+    
+    setTimeout(() => {
+      isAnalysisLoadingModalOpen.value = false
+      router.push('/analyze/result')
+    }, 3000)
+  } catch (error: any) {
     isAnalysisLoadingModalOpen.value = false
-    // 분석 결과 페이지로 이동
-    router.push('/analyze/result')
-  }, 8000) // 애니메이션이 모두 재생되도록 8초 정도 대기
+    
+    // GUEST 권한 등 추가 정보 필요 시 처리
+    if (error.response?.status === 403 && error.response?.data?.code === 'NEED_ADDITIONAL_INFO') {
+      alert('식단 분석을 위해서 추가 정보를 입력해주세요.')
+      router.push('/my-page')
+      return
+    }
+
+    alert(showError(error))
+    console.error(error)
+  }
 }
 
 const handleChooseExpert = () => {

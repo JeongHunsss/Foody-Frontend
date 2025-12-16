@@ -1,21 +1,44 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { User, Lock, Mail, X, Send } from 'lucide-vue-next'
+import { User, Lock } from 'lucide-vue-next'
 import logoImage from '@/assets/foody_logo.png'
+import { useAuthStore } from '@/stores/auth'
+import { showError } from '@/utils/errorHandler'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const username = ref('')
 const password = ref('')
-const showFindId = ref(false)
-const showFindPassword = ref(false)
+const isLoading = ref(false)
+const errorMessage = ref('')
 
-const handleSubmit = (e: Event) => {
+const handleSubmit = async (e: Event) => {
   e.preventDefault()
-  console.log('Login:', { username: username.value, password: password.value })
-  localStorage.setItem('isLoggedIn', 'true')
-  router.push('/')
+  errorMessage.value = ''
+  isLoading.value = true
+
+  try {
+    await authStore.login({
+      id: username.value,
+      password: password.value
+    })
+    router.push('/')
+  } catch (error) {
+    errorMessage.value = showError(error, 'Login')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// OAuth2 소셜 로그인
+const handleKakaoLogin = () => {
+  window.location.href = 'http://localhost:8080/oauth2/authorization/kakao'
+}
+
+const handleGoogleLogin = () => {
+  window.location.href = 'http://localhost:8080/oauth2/authorization/google'
 }
 </script>
 
@@ -44,12 +67,17 @@ const handleSubmit = (e: Event) => {
 
       <!-- Login Card -->
       <div class="bg-white rounded-3xl shadow-2xl p-8 border border-emerald-100/60">
+        <!-- Error Message -->
+        <div v-if="errorMessage" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+          {{ errorMessage }}
+        </div>
+
         <!-- Form -->
         <form @submit="handleSubmit" class="space-y-5">
           <div>
             <label for="username" class="block text-sm text-gray-700 mb-2">아이디</label>
-            <div class="relative">
-              <User class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div class="relative flex items-center">
+              <User class="absolute left-3 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 id="username"
                 v-model="username"
@@ -57,33 +85,25 @@ const handleSubmit = (e: Event) => {
                 placeholder="아이디를 입력하세요"
                 class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                 required
+                :disabled="isLoading"
               />
             </div>
           </div>
 
           <div>
             <label for="password" class="block text-sm text-gray-700 mb-2">비밀번호</label>
-            <div class="relative">
-              <Lock class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div class="relative flex items-center">
+              <Lock class="absolute left-3 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 id="password"
                 v-model="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="비밀번호를 입력하세요"
                 class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                 required
+                :disabled="isLoading"
               />
             </div>
-          </div>
-
-          <div class="flex items-center justify-between text-sm">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                class="w-4 h-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span class="text-gray-600">아이디 기억하기</span>
-            </label>
           </div>
 
           <button
@@ -91,9 +111,10 @@ const handleSubmit = (e: Event) => {
             :hovered="{ scale: 1.02 }"
             :tapped="{ scale: 0.98 }"
             type="submit"
-            class="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white py-4 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+            :disabled="isLoading"
+            class="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white py-4 rounded-xl shadow-lg hover:shadow-xl transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            로그인
+            {{ isLoading ? '로그인 중...' : '로그인' }}
           </button>
         </form>
 
@@ -114,6 +135,7 @@ const handleSubmit = (e: Event) => {
             :hovered="{ scale: 1.02 }"
             :tapped="{ scale: 0.98 }"
             type="button"
+            @click="handleKakaoLogin"
             class="w-full flex items-center justify-center gap-3 bg-[#FEE500] text-[#000000] py-3 rounded-xl hover:opacity-90 transition-opacity"
           >
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -127,6 +149,7 @@ const handleSubmit = (e: Event) => {
             :hovered="{ scale: 1.02 }"
             :tapped="{ scale: 0.98 }"
             type="button"
+            @click="handleGoogleLogin"
             class="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <svg class="w-5 h-5" viewBox="0 0 24 24">
@@ -139,23 +162,6 @@ const handleSubmit = (e: Event) => {
           </button>
         </div>
 
-        <!-- Find ID/Password Links -->
-        <div class="mt-6 flex items-center justify-center gap-4 text-sm">
-          <button
-            @click="showFindId = true"
-            class="text-gray-600 hover:text-emerald-600 transition-colors"
-          >
-            아이디 찾기
-          </button>
-          <span class="text-gray-300">|</span>
-          <button
-            @click="showFindPassword = true"
-            class="text-gray-600 hover:text-emerald-600 transition-colors"
-          >
-            비밀번호 찾기
-          </button>
-        </div>
-
         <!-- Signup Link -->
         <div class="mt-6 text-center text-sm">
           <span class="text-gray-600">아직 계정이 없으신가요? </span>
@@ -165,75 +171,5 @@ const handleSubmit = (e: Event) => {
         </div>
       </div>
     </div>
-
-    <!-- Find ID Modal -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition-opacity duration-200"
-        leave-active-class="transition-opacity duration-200"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="showFindId"
-          class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          @click="showFindId = false"
-        >
-          <div
-            v-motion
-            :initial="{ scale: 0.9, opacity: 0 }"
-            :enter="{ scale: 1, opacity: 1 }"
-            :leave="{ scale: 0.9, opacity: 0 }"
-            @click.stop
-            class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full relative"
-          >
-            <button
-              @click="showFindId = false"
-              class="absolute top-4 right-4 w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
-            >
-              <X :size="20" class="text-gray-600" />
-            </button>
-            <h2 class="text-gray-900 mb-2">아이디 찾기</h2>
-            <p class="text-gray-600 mb-6">이메일 인증을 통해 아이디를 찾을 수 있습니다.</p>
-            <p class="text-gray-500">기능 구현 예정</p>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- Find Password Modal -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition-opacity duration-200"
-        leave-active-class="transition-opacity duration-200"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="showFindPassword"
-          class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          @click="showFindPassword = false"
-        >
-          <div
-            v-motion
-            :initial="{ scale: 0.9, opacity: 0 }"
-            :enter="{ scale: 1, opacity: 1 }"
-            :leave="{ scale: 0.9, opacity: 0 }"
-            @click.stop
-            class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full relative"
-          >
-            <button
-              @click="showFindPassword = false"
-              class="absolute top-4 right-4 w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
-            >
-              <X :size="20" class="text-gray-600" />
-            </button>
-            <h2 class="text-gray-900 mb-2">비밀번호 찾기</h2>
-            <p class="text-gray-600 mb-6">가입 시 입력한 정보로 비밀번호를 재설정할 수 있습니다.</p>
-            <p class="text-gray-500">기능 구현 예정</p>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>

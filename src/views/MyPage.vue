@@ -1,51 +1,31 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  User, Mail, Calendar, Ruler, Weight, Activity,
+  User, Mail, Weight, Activity, Calendar, Stethoscope,
   Edit2, Save, X, ChevronRight, FileText, ChevronLeft, Trash2, Lock, Eye, EyeOff
 } from 'lucide-vue-next'
 import Navbar from '@/components/Navbar.vue'
+import { useAuthStore } from '@/stores/auth'
+import { userApi } from '@/api/user.api'
+import { reportApi } from '@/api/report.api'
+import { publicApi } from '@/api/public.api'
+import type { UserResponse, Report, ActivityLevelResponse } from '@/api/types'
+import { showError } from '@/utils/errorHandler'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
-// Mock 데이터
-const mockUserData = {
-  username: 'foody_lover',
-  name: '김푸디',
-  email: 'foody@example.com',
-  age: 25,
-  height: 170,
-  weight: 65,
-  gender: 'female' as 'male' | 'female',
-  activityLevel: '3',
-  hasDiabetes: false,
-  joinDate: '2024-01-15'
-}
+// 사용자 데이터
+const userData = ref<UserResponse | null>(null)
+const editedData = ref<UserResponse | null>(null)
+const reports = ref<Report[]>([])
+const activityLevels = ref<ActivityLevelResponse[]>([])
+const isLoading = ref(false)
+const errorMessage = ref('')
 
-const mockAnalysisReports = [
-  { id: '1', date: '2024-12-14', score: 85, characterName: '건강 푸디', comment: '훌륭한 식습관이에요! 균형잡힌 식단입니다.' },
-  { id: '2', date: '2024-12-13', score: 78, characterName: '균형 푸디', comment: '좋은 식습관을 유지하고 있어요!' },
-  { id: '3', date: '2024-12-10', score: 92, characterName: '완벽 푸디', comment: '완벽한 영양 균형이에요! 정말 훌륭합니다.' },
-  { id: '4', date: '2024-12-08', score: 73, characterName: '노력 푸디', comment: '조금씩 나아지고 있어요. 계속 파이팅!' },
-  { id: '5', date: '2024-12-05', score: 88, characterName: '건강 푸디', comment: '단백질 섭취가 아주 좋아요!' },
-  { id: '6', date: '2024-12-03', score: 81, characterName: '균형 푸디', comment: '탄수화물과 단백질 비율이 좋네요.' },
-  { id: '7', date: '2024-11-30', score: 76, characterName: '노력 푸디', comment: '식습관이 개선되고 있어요.' },
-  { id: '8', date: '2024-11-28', score: 90, characterName: '건강 푸디', comment: '완벽한 하루였어요!' },
-]
-
-const activityLevelNames = {
-  '1': '거의 활동 없음',
-  '2': '가벼운 활동',
-  '3': '보통 활동',
-  '4': '활발한 활동',
-  '5': '매우 활발함'
-}
-
-const activeTab = ref<'info' | 'reports'>('reports')
+const activeTab = ref<'info' | 'reports'>('info')
 const isEditing = ref(false)
-const editedData = ref({ ...mockUserData })
-const reports = ref([...mockAnalysisReports])
 
 // 비밀번호 변경
 const isChangingPassword = ref(false)
@@ -62,9 +42,57 @@ const endDate = ref('')
 const currentPage = ref(1)
 const itemsPerPage = 6
 
+// 활동량 설명 가져오기
+const getActivityLevelDescription = (level: number) => {
+  if (activityLevels.value.length === 0) return '로딩 중...'
+  const found = activityLevels.value.find(l => l.level === level)
+  return found ? found.description : ''
+}
+
+// 사용자 정보 로드
+const loadUserInfo = async () => {
+  try {
+    const data = await userApi.getMyInfo()
+    userData.value = data
+    editedData.value = { ...data }
+  } catch (error) {
+    errorMessage.value = showError(error)
+  }
+}
+
+// 활동량 목록 로드
+const loadActivityLevels = async () => {
+  try {
+    activityLevels.value = await publicApi.getActivityLevels()
+  } catch (error) {
+    console.error('Failed to load activity levels:', error)
+  }
+}
+
+// 레포트 로드
+const loadReports = async () => {
+  isLoading.value = true
+  try {
+    const data = await reportApi.getReportList(
+      1, // 모든 페이지 로드 (또는 필요에 따라 페이징)
+      startDate.value || undefined,
+      endDate.value || undefined
+    )
+    reports.value = data
+  } catch (error: any) {
+    // GUEST가 레포트 조회 시 발생하는 403 에러는 무시 (이미 Info 탭에서 경고를 보여주고 있음)
+    if (error.response?.status === 403 && error.response?.data?.code === 'NEED_ADDITIONAL_INFO') {
+      return
+    }
+    errorMessage.value = showError(error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
 const filteredReports = computed(() => {
   return reports.value.filter((report) => {
-    const reportDate = new Date(report.date)
+    const reportDate = new Date(report.createdAt)
     const start = startDate.value ? new Date(startDate.value) : null
     const end = endDate.value ? new Date(endDate.value) : null
     if (start && reportDate < start) return false
@@ -87,47 +115,77 @@ const handlePageChange = (page: number) => {
   }
 }
 
-const handleResetFilter = () => {
+const handleResetFilter = async () => {
   startDate.value = ''
   endDate.value = ''
   currentPage.value = 1
+  await loadReports()
 }
 
-const handleDeleteReport = (reportId: string, e: Event) => {
+const handleDeleteReport = async (reportId: number, e: Event) => {
   e.stopPropagation()
   
   if (window.confirm('이 레포트를 삭제하시겠습니까?')) {
-    reports.value = reports.value.filter(report => report.id !== reportId)
-    
-    // 삭제 후 페이지 조정
-    if (currentPage.value > totalPages.value && totalPages.value > 0) {
-      currentPage.value = totalPages.value
+    try {
+      await reportApi.deleteReport(reportId)
+      reports.value = reports.value.filter(report => report.id !== reportId)
+      
+      // 삭제 후 페이지 조정
+      if (currentPage.value > totalPages.value && totalPages.value > 0) {
+        currentPage.value = totalPages.value
+      }
+    } catch (error) {
+      errorMessage.value = showError(error)
     }
   }
 }
 
-const handleSave = () => {
-  console.log('Updated user data:', editedData.value)
-  isEditing.value = false
+const handleSave = async () => {
+  if (!editedData.value) return
+  
+  try {
+    await userApi.updateMyInfo({
+      name: editedData.value.name,
+      email: editedData.value.email,
+      age: editedData.value.age,
+      height: editedData.value.height,
+      weight: editedData.value.weight,
+      gender: editedData.value.gender as 'M' | 'F',
+      activityLevel: editedData.value.activityLevel,
+      isDiabetes: editedData.value.isDiabetes
+    })
+    // 서버에서 재계산된 권장 영양 정보를 받아오기 위해 다시 로드
+    await loadUserInfo()
+    isEditing.value = false
+    alert('프로필이 업데이트되었습니다')
+  } catch (error) {
+    alert(showError(error))
+  }
 }
 
 const handleCancel = () => {
-  editedData.value = { ...mockUserData }
+  if (userData.value) {
+    editedData.value = { ...userData.value }
+  }
   isEditing.value = false
 }
 
-const handleDeleteAccount = () => {
+const handleDeleteAccount = async () => {
   if (window.confirm('정말로 회원탈퇴 하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
     if (window.confirm('모든 데이터가 삭제됩니다. 정말 탈퇴하시겠습니까?')) {
-      // TODO: 실제 회원탈퇴 API 호출
-      localStorage.removeItem('isLoggedIn')
-      alert('회원탈퇴가 완료되었습니다.')
-      router.push('/')
+      try {
+        await userApi.deleteAccount()
+        authStore.logout()
+        alert('회원탈퇴가 완료되었습니다.')
+        router.push('/')
+      } catch (error) {
+        alert(showError(error))
+      }
     }
   }
 }
 
-const handleChangePassword = () => {
+const handleChangePassword = async () => {
   if (!currentPassword.value || !newPassword.value || !confirmPassword.value) {
     alert('모든 필드를 입력해주세요.')
     return
@@ -140,12 +198,25 @@ const handleChangePassword = () => {
     alert('비밀번호는 8자 이상이어야 합니다.')
     return
   }
-  alert('비밀번호가 변경되었습니다.')
-  isChangingPassword.value = false
-  currentPassword.value = ''
-  newPassword.value = ''
-  confirmPassword.value = ''
+  
+  try {
+    await userApi.changePassword({
+      oldPassword: currentPassword.value,
+      newPassword: newPassword.value
+    })
+    alert('비밀번호가 변경되었습니다.')
+    isChangingPassword.value = false
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (error) {
+    alert(showError(error))
+  }
 }
+
+onMounted(async () => {
+  await Promise.all([loadUserInfo(), loadReports(), loadActivityLevels()])
+})
 </script>
 
 <template>
@@ -153,8 +224,19 @@ const handleChangePassword = () => {
     <Navbar />
 
     <div class="max-w-6xl mx-auto px-4 py-8">
+      <!-- 로딩 및 에러 메시지 -->
+      <div v-if="isLoading && !userData" class="text-center py-12">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+        <p class="text-gray-600">정보를 불러오는 중입니다...</p>
+      </div>
+
+      <div v-if="errorMessage" class="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-center">
+        {{ errorMessage }}
+      </div>
+
       <!-- 탭 네비게이션 -->
       <div
+        v-if="userData || activeTab === 'reports'"
         v-motion
         :initial="{ opacity: 0, y: 20 }"
         :enter="{ opacity: 1, y: 0 }"
@@ -194,6 +276,79 @@ const handleChangePassword = () => {
         :enter="{ opacity: 1, x: 0 }"
         class="space-y-6"
       >
+        <!-- 게스트 경고 배너 -->
+        <div 
+          v-if="authStore.user?.role === 'ROLE_GUEST'" 
+          class="bg-amber-50 rounded-2xl p-6 border border-amber-200 flex items-center gap-4 shadow-sm"
+        >
+          <div class="bg-amber-100 p-3 rounded-full flex-shrink-0">
+            <span class="text-2xl">⚠️</span>
+          </div>
+          <div>
+            <h3 class="text-amber-800 font-bold text-lg mb-1">기본 정보 입력이 필요합니다</h3>
+            <p class="text-amber-600">정확한 건강 분석을 위해 아래 사용자 정보를 모두 입력해주세요.</p>
+          </div>
+        </div>
+
+        <!-- 권장 영양 정보 섹션 -->
+      <div
+        v-if="userData"
+        v-motion
+        :initial="{ opacity: 0, y: 20 }"
+        :enter="{ opacity: 1, y: 0, transition: { delay: 100 } }"
+        class="bg-white rounded-2xl shadow-lg p-8 mb-8"
+      >
+        <h2 class="text-2xl text-gray-900 mb-6 flex items-center gap-2">
+          <Activity :size="24" class="text-emerald-600" />
+          나의 권장 영양 정보
+        </h2>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
+            <div class="text-sm text-gray-600 mb-1">칼로리</div>
+            <div class="text-2xl text-orange-600 font-semibold">
+              {{ (userData as any).stdKcal || 0 }}<span class="text-sm ml-1">kcal</span>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
+            <div class="text-sm text-gray-600 mb-1">탄수화물</div>
+            <div class="text-2xl text-blue-600 font-semibold">
+              {{ (userData as any).stdCarb || 0 }}<span class="text-sm ml-1">g</span>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl p-4">
+            <div class="text-sm text-gray-600 mb-1">단백질</div>
+            <div class="text-2xl text-emerald-600 font-semibold">
+              {{ (userData as any).stdProtein || 0 }}<span class="text-sm ml-1">g</span>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4">
+            <div class="text-sm text-gray-600 mb-1">지방</div>
+            <div class="text-2xl text-yellow-600 font-semibold">
+              {{ (userData as any).stdFat || 0 }}<span class="text-sm ml-1">g</span>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4">
+            <div class="text-sm text-gray-600 mb-1">당류</div>
+            <div class="text-2xl text-pink-600 font-semibold">
+              {{ (userData as any).stdSugar || 0 }}<span class="text-sm ml-1">g</span>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
+            <div class="text-sm text-gray-600 mb-1">나트륨</div>
+            <div class="text-2xl text-purple-600 font-semibold">
+              {{ (userData as any).stdNatrium || 0 }}<span class="text-sm ml-1">g</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <template v-if="editedData">
         <!-- 프로필 카드 -->
         <div class="bg-white rounded-3xl shadow-lg p-8 border-2 border-emerald-100">
           <div class="flex items-center justify-between mb-6">
@@ -236,7 +391,7 @@ const handleChangePassword = () => {
               </label>
               <input
                 type="text"
-                :value="editedData.username"
+                :value="editedData?.id"
                 disabled
                 class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-700"
               />
@@ -249,9 +404,29 @@ const handleChangePassword = () => {
                 이름
               </label>
               <input
-                v-model="editedData.name"
+                v-model="editedData!.name"
                 type="text"
                 :disabled="!isEditing"
+                :class="[
+                  'w-full px-4 py-3 border-2 rounded-xl transition-colors',
+                  isEditing
+                    ? 'border-emerald-100 focus:border-emerald-400 focus:outline-none'
+                    : 'bg-gray-50 border-gray-200 text-gray-700'
+                ]"
+              />
+            </div>
+
+            <!-- 나이 (신규) -->
+            <div class="space-y-2">
+              <label class="text-sm text-gray-600 flex items-center gap-2">
+                <Calendar :size="16" />
+                나이
+              </label>
+              <input
+                v-model.number="editedData!.age"
+                type="number"
+                :disabled="!isEditing"
+                placeholder="나이를 입력하세요"
                 :class="[
                   'w-full px-4 py-3 border-2 rounded-xl transition-colors',
                   isEditing
@@ -268,49 +443,40 @@ const handleChangePassword = () => {
                 이메일
               </label>
               <input
-                v-model="editedData.email"
+                v-model="editedData!.email"
                 type="email"
-                :disabled="!isEditing"
-                :class="[
-                  'w-full px-4 py-3 border-2 rounded-xl transition-colors',
-                  isEditing
-                    ? 'border-emerald-100 focus:border-emerald-400 focus:outline-none'
-                    : 'bg-gray-50 border-gray-200 text-gray-700'
-                ]"
+                disabled
+                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-700 cursor-not-allowed"
               />
             </div>
 
-            <!-- 나이 -->
-            <div class="space-y-2">
+            <!-- 성별 (신규 추가, 기존에는 표시 안함? 아, 라디오버튼으로 추가 필요) -->
+             <div class="space-y-2">
               <label class="text-sm text-gray-600 flex items-center gap-2">
-                <Calendar :size="16" />
-                나이
+                <User :size="16" />
+                성별
               </label>
-              <div class="relative">
-                <input
-                  v-model.number="editedData.age"
-                  type="number"
-                  :disabled="!isEditing"
-                  :class="[
-                    'w-full px-4 py-3 border-2 rounded-xl transition-colors',
-                    isEditing
-                      ? 'border-emerald-100 focus:border-emerald-400 focus:outline-none'
-                      : 'bg-gray-50 border-gray-200 text-gray-700'
-                  ]"
-                />
-                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">세</span>
+              <div class="flex gap-4 h-[52px] items-center px-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" value="M" v-model="editedData!.gender" :disabled="!isEditing" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300" />
+                  <span :class="!isEditing ? 'text-gray-500' : 'text-gray-700'">남성</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" value="F" v-model="editedData!.gender" :disabled="!isEditing" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300" />
+                  <span :class="!isEditing ? 'text-gray-500' : 'text-gray-700'">여성</span>
+                </label>
               </div>
             </div>
 
             <!-- 키 -->
             <div class="space-y-2">
               <label class="text-sm text-gray-600 flex items-center gap-2">
-                <Ruler :size="16" />
+                <Weight :size="16" />
                 키
               </label>
               <div class="relative">
                 <input
-                  v-model.number="editedData.height"
+                  v-model.number="editedData!.height"
                   type="number"
                   :disabled="!isEditing"
                   :class="[
@@ -332,7 +498,7 @@ const handleChangePassword = () => {
               </label>
               <div class="relative">
                 <input
-                  v-model.number="editedData.weight"
+                  v-model.number="editedData!.weight"
                   type="number"
                   :disabled="!isEditing"
                   :class="[
@@ -345,6 +511,27 @@ const handleChangePassword = () => {
                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">kg</span>
               </div>
             </div>
+            
+            <!-- 당뇨 여부 (신규) -->
+             <div class="space-y-2">
+              <label class="text-sm text-gray-600 flex items-center gap-2">
+                <Stethoscope :size="16" />
+                당뇨 여부
+              </label>
+              <div class="flex gap-4 h-[52px] items-center px-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" :value="true" v-model="editedData!.isDiabetes" :disabled="!isEditing" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300" />
+                  <span :class="!isEditing ? 'text-gray-500' : 'text-gray-700'">예</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" :value="false" v-model="editedData!.isDiabetes" :disabled="!isEditing" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300" />
+                  <span :class="!isEditing ? 'text-gray-500' : 'text-gray-700'">아니오</span>
+                </label>
+              </div>
+              <p v-if="editedData!.isDiabetes" class="text-xs text-amber-600 flex items-center gap-1 pl-2">
+                <span>⚠️</span> 당뇨가 있는 경우 의사의 진단이 필요합니다
+              </p>
+            </div>
 
             <!-- 활동량 -->
             <div class="space-y-2 md:col-span-2">
@@ -354,44 +541,24 @@ const handleChangePassword = () => {
               </label>
               <select
                 v-if="isEditing"
-                v-model="editedData.activityLevel"
+                v-model.number="editedData!.activityLevel"
                 class="w-full px-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors appearance-none bg-white cursor-pointer"
               >
-                <option value="1">1 - 거의 활동 없음 (주로 앉아서 생활)</option>
-                <option value="2">2 - 가벼운 활동 (주 1-2회 운동)</option>
-                <option value="3">3 - 보통 활동 (주 3-4회 운동)</option>
-                <option value="4">4 - 활발한 활동 (주 5-6회 운동)</option>
-                <option value="5">5 - 매우 활발함 (매일 격한 운동)</option>
+                <option v-if="activityLevels.length === 0" :value="editedData?.activityLevel">데이터 로딩 중...</option>
+                <option v-for="level in activityLevels" :key="level.level" :value="level.level">
+                  {{ level.level }} - {{ level.description }}
+                </option>
               </select>
               <input
                 v-else
                 type="text"
-                :value="`${editedData.activityLevel} - ${activityLevelNames[editedData.activityLevel as keyof typeof activityLevelNames]}`"
+                :value="editedData?.activityLevel ? `${editedData.activityLevel} - ${getActivityLevelDescription(editedData.activityLevel)}` : ''"
                 disabled
                 class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-700"
               />
             </div>
 
-            <!-- 당뇨 여부 -->
-            <div class="md:col-span-2">
-              <label
-                :class="[
-                  'flex items-center gap-3 cursor-pointer p-4 rounded-xl transition-colors',
-                  isEditing ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'bg-gray-50'
-                ]"
-              >
-                <input
-                  v-model="editedData.hasDiabetes"
-                  type="checkbox"
-                  :disabled="!isEditing"
-                  :class="[
-                    'w-5 h-5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500',
-                    isEditing ? 'cursor-pointer' : 'cursor-not-allowed'
-                  ]"
-                />
-                <span class="text-gray-700">당뇨병이 있습니다</span>
-              </label>
-            </div>
+
           </div>
         </div>
 
@@ -507,6 +674,7 @@ const handleChangePassword = () => {
           <User :size="20" />
           회원탈퇴
         </button>
+        </template>
       </div>
 
       <!-- 분석 레포트 탭 -->
@@ -594,7 +762,7 @@ const handleChangePassword = () => {
             <div class="flex items-center justify-between">
               <div class="flex-1">
                 <div class="flex items-center gap-3 mb-3">
-                  <h3 class="text-gray-900">{{ new Date(report.date).toLocaleDateString() }}</h3>
+                  <h3 class="text-gray-900">{{ new Date(report.createdAt).toLocaleDateString() }}</h3>
                   <div class="px-4 py-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-full text-sm">
                     {{ report.score }}점
                   </div>
@@ -602,7 +770,7 @@ const handleChangePassword = () => {
                 <div class="space-y-2">
                   <div class="flex items-center gap-2 text-sm text-gray-600">
                     <span class="text-2xl">🌱</span>
-                    <span>{{ report.characterName }}</span>
+                    <span>캐릭터 ID: {{ report.characterId || 'N/A' }}</span>
                   </div>
                   <p class="text-gray-700 bg-emerald-50 rounded-xl p-3 text-sm">
                     💬 {{ report.comment }}

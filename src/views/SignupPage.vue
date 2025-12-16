@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { Mail, Lock, User, Check, Send, Scale, Ruler, Calendar, Activity } from 'lucide-vue-next'
 import logoImage from '@/assets/foody_logo.png'
 import foodyEggImage from '@/assets/characters/foody_egg.png'
+import { publicApi } from '@/api/public.api'
+import type { ActivityLevelResponse } from '@/api/types'
 
 const router = useRouter()
 
@@ -24,6 +26,24 @@ const activityLevel = ref('3')
 const hasDiabetes = ref(false)
 const showWelcome = ref(false)
 
+// 활동량 목록 (DB에서 로드)
+const activityLevels = ref<ActivityLevelResponse[]>([])
+
+// 활동량 목록 불러오기
+onMounted(async () => {
+  try {
+    activityLevels.value = await publicApi.getActivityLevels()
+    // 첫 번째 활동량을 기본값으로 설정 (또는 중간값)
+    if (activityLevels.value.length  > 0) {
+      const middleIndex = Math.floor(activityLevels.value.length / 2)
+      activityLevel.value = activityLevels.value[middleIndex].level.toString()
+    }
+  } catch (error) {
+    console.error('Failed to load activity levels:', error)
+    // 실패시 기본 하드코딩 값 사용
+  }
+})
+
 const handleUsernameCheck = () => {
   const isAvailable = Math.random() > 0.5
   isUsernameAvailable.value = isAvailable
@@ -35,7 +55,12 @@ const handleSendEmail = () => {
   console.log('Verification email sent to:', email.value)
 }
 
-const handleSubmit = (e: Event) => {
+import { authApi } from '@/api/auth.api'
+import { showError } from '@/utils/errorHandler'
+
+// ...
+
+const handleSubmit = async (e: Event) => {
   e.preventDefault()
   
   if (!isUsernameChecked.value || !isUsernameAvailable.value) {
@@ -53,29 +78,32 @@ const handleSubmit = (e: Event) => {
     return
   }
   
-  console.log('Signup:', {
-    username: username.value,
-    password: password.value,
-    name: name.value,
-    email: email.value,
-    verificationCode: verificationCode.value,
-    age: age.value,
-    height: height.value,
-    weight: weight.value,
-    gender: gender.value,
-    activityLevel: activityLevel.value,
-    hasDiabetes: hasDiabetes.value
-  })
-  
-  localStorage.setItem('isLoggedIn', 'true')
-  showWelcome.value = true
-  
-  // 잠시 후 분석 페이지로 이동
-  setTimeout(() => {
-    showWelcome.value = false
-    router.push('/analyze')
-  }, 2000)
+  try {
+    await authApi.signup({
+      id: username.value,
+      password: password.value,
+      name: name.value,
+      email: email.value,
+      age: Number(age.value),
+      height: Number(height.value),
+      weight: Number(weight.value),
+      gender: gender.value === 'male' ? 'M' : 'F',
+      activityLevel: Number(activityLevel.value),
+      isDiabetes: hasDiabetes.value
+    })
+
+    showWelcome.value = true
+    
+    // 잠시 후 로그인 페이지로 이동 (또는 바로 로그인 처리)
+    setTimeout(() => {
+      showWelcome.value = false
+      router.push('/login')
+    }, 2000)
+  } catch (error) {
+    alert(showError(error))
+  }
 }
+
 </script>
 
 <template>
@@ -403,11 +431,14 @@ const handleSubmit = (e: Event) => {
                   class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors appearance-none bg-white cursor-pointer"
                   required
                 >
-                  <option value="1">1 - 거의 활동 없음 (주로 앉아서 생활)</option>
-                  <option value="2">2 - 가벼운 활동 (주 1-2회 운동)</option>
-                  <option value="3">3 - 보통 활동 (주 3-4회 운동)</option>
-                  <option value="4">4 - 활발한 활동 (주 5-6회 운동)</option>
-                  <option value="5">5 - 매우 활발함 (매일 격한 운동)</option>
+                  <option v-if="activityLevels.length === 0" value="3">로딩 중...</option>
+                  <option 
+                    v-for="level in activityLevels" 
+                    :key="level.level" 
+                    :value="level.level"
+                  >
+                    {{ level.level }} - {{ level.description }}
+                  </option>
                 </select>
               </div>
             </div>
@@ -422,6 +453,9 @@ const handleSubmit = (e: Event) => {
                 />
                 <span class="text-gray-700">당뇨병이 있습니다</span>
               </label>
+              <p v-if="hasDiabetes" class="text-xs text-amber-600 flex items-center gap-1 mt-2 pl-2">
+                <span>⚠️</span> 당뇨가 있는 경우 의사의 진단이 필요합니다
+              </p>
             </div>
           </div>
 

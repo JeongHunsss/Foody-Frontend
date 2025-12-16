@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
 import Navbar from '@/components/Navbar.vue'
 import logoImage from '@/assets/foody_logo.png'
+import { characterApi } from '@/api/character.api'
+import { showError } from '@/utils/errorHandler'
+
+// Import character images
 import foodyEggImage from '@/assets/characters/foody_egg.png'
 import sproutFoodyImage from '@/assets/characters/ssassak_foody.png'
 import slimanderImage from '@/assets/characters/slimander.png'
@@ -22,78 +27,64 @@ interface Character {
   color: string
 }
 
-const characters: Character[] = [
-  {
-    id: 1,
-    name: "푸디 알",
-    image: foodyEggImage,
-    description: "아직 태어나지 않은 푸디의 알이에요! 어떤 푸디가 태어날까요?",
-    color: "from-green-400 to-emerald-500",
-  },
-  {
-    id: 2,
-    name: "새싹 푸디",
-    image: sproutFoodyImage,
-    description: "아직은 아무런 맛도 모르는 아기 새싹입니다. 당신의 건강한 식단 기록으로 무럭무럭 키워주세요!",
-    color: "from-yellow-400 to-orange-400",
-  },
-  {
-    id: 3,
-    name: "슬리만더",
-    image: slimanderImage,
-    description: "한 손엔 덤벨, 한 손엔 샐러드! 체지방 태우기를 가장 좋아하는 열정적인 다이어트 코치입니다. 저와 함께라면 목표 체중 달성은 식은 죽 먹기죠!",
-    color: "from-emerald-400 to-green-500",
-  },
-  {
-    id: 4,
-    name: "탄단지오",
-    image: tandanjioImage,
-    description: "탄수화물, 단백질, 지방의 황금비율을 정복한 밸런스 챔피언입니다! 과하지도 부족하지도 않은 완벽한 식단으로 저와 함께 건강의 정점에 도달해보세요.",
-    color: "from-green-500 to-teal-600",
-  },
-  {
-    id: 5,
-    name: "왕마니",
-    image: wangmaniImage,
-    description: "세상엔 맛있는 게 너무 많아! 밥그릇을 비우는 속도가 누구보다 빠른 미식가입니다. 이제 넘치는 식욕을 조금만 조절해서 '적당함'의 미학을 배워볼까요?",
-    color: "from-orange-400 to-red-400",
-  },
-  {
-    id: 6,
-    name: "잠마니",
-    image: jammaniImage,
-    description: "아침밥보다 5분 더 자는 게 좋은 잠꾸러기입니다. 흘린 침만큼 배가 고플 텐데... 이제 무거운 이불을 걷어차고 상쾌한 아침 식사로 하루를 깨워볼까요?",
-    color: "from-gray-400 to-slate-500",
-  },
-  {
-    id: 7,
-    name: "짜구리",
-    image: jjaguriImage,
-    description: "소금통을 마라카스처럼 흔들 때가 제일 신나! 짭조름한 맛에 취해 눈이 뱅글뱅글 돌아버린 라쿤입니다. 혀끝이 짜릿할수록 건강 적신호도 켜진다는 사실, 잊지 마세요!",
-    color: "from-blue-400 to-cyan-500",
-  },
-  {
-    id: 8,
-    name: "요마니",
-    image: yomaniImage,
-    description: "더도 말고 덜도 말고 딱 '요만큼'만 먹어요. 배부른 느낌이 싫어 조금씩 자주 먹는 소식가입니다. 가볍고 산뜻한 위장을 원하신다면 저를 따라오세요!",
-    color: "from-amber-400 to-yellow-500",
-  },
-  {
-    id: 9,
-    name: "주전부엉",
-    image: jujeonbuoungImage,
-    description: "밥은 건너뛰어도 디저트는 필수! 바스락거리는 과자 봉지 소리에 반응하는 간식 사냥꾼입니다. 달콤한 유혹에 빠져 저처럼 눈이 뱅글뱅글 돌기 전에, 이제 그만 손을 멈추세요!",
-    color: "from-purple-400 to-violet-500",
-  },
-  {
-    id: 10,
-    name: "달다구리",
-    image: daldaguriImage,
-    description: "솜사탕 머리에 젤리 팔다리, 초콜릿 복근까지! 혈관에 시럽이 흐를 것 같은 달콤함의 화신입니다. 저처럼 눈이 뱅글뱅글 돌기 전에 당류 섭취를 조금 줄여보는 건 어때요?",
-    color: "from-pink-400 to-rose-500",
-  },
-]
+const characters = ref<Character[]>([])
+const isLoading = ref(true)
+const errorMessage = ref('')
+
+// 이미지 매핑 (백엔드에서 이미지 경로를 제공하지 않는 경우)
+const imageMap: Record<number, string> = {
+  1: foodyEggImage,
+  2: sproutFoodyImage,
+  3: slimanderImage,
+  4: tandanjioImage,
+  5: wangmaniImage,
+  6: jammaniImage,
+  7: jjaguriImage,
+  8: yomaniImage,
+  9: jujeonbuoungImage,
+  10: daldaguriImage
+}
+
+// 색상 매핑
+const colorMap: Record<number, string> = {
+  1: "from-green-400 to-emerald-500",
+  2: "from-yellow-400 to-orange-400",
+  3: "from-emerald-400 to-green-500",
+  4: "from-green-500 to-teal-600",
+  5: "from-orange-400 to-red-400",
+  6: "from-gray-400 to-slate-500",
+  7: "from-blue-400 to-cyan-500",
+  8: "from-amber-400 to-yellow-500",
+  9: "from-purple-400 to-violet-500",
+  10: "from-pink-400 to-rose-500"
+}
+
+const loadCharacters = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const data = await characterApi.getAllCharacters()
+    
+    // 백엔드 데이터에 이미지와 색상 추가
+    characters.value = data.map(char => ({
+      id: char.id,
+      name: char.name,
+      description: char.description,
+      image: imageMap[char.id] || foodyEggImage,
+      color: colorMap[char.id] || "from-green-400 to-emerald-500"
+    }))
+  } catch (error) {
+    errorMessage.value = showError(error, 'Load Characters')
+    console.error('Failed to load characters:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadCharacters()
+})
 </script>
 
 <template>
