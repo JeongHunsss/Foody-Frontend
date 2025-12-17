@@ -303,7 +303,7 @@ onMounted(async () => {
           나의 권장 영양 정보
         </h2>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4">
             <div class="text-sm text-gray-600 mb-1">칼로리</div>
             <div class="text-2xl text-orange-600 font-semibold">

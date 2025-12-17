@@ -5,6 +5,8 @@ import { User, Lock } from 'lucide-vue-next'
 import logoImage from '@/assets/foody_logo.png'
 import { useAuthStore } from '@/stores/auth'
 import { showError } from '@/utils/errorHandler'
+import FindIdModal from '@/components/FindIdModal.vue'
+import FindPasswordModal from '@/components/FindPasswordModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -13,6 +15,10 @@ const username = ref('')
 const password = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
+
+// 모달 상태
+const isFindIdModalOpen = ref(false)
+const isFindPasswordModalOpen = ref(false)
 
 const handleSubmit = async (e: Event) => {
   e.preventDefault()
@@ -106,6 +112,25 @@ const handleGoogleLogin = () => {
             </div>
           </div>
 
+          <!-- 아이디/비밀번호 찾기 -->
+          <div class="flex justify-end gap-3 text-sm">
+            <button 
+              type="button" 
+              @click="isFindIdModalOpen = true"
+              class="text-gray-600 hover:text-emerald-600 transition-colors"
+            >
+              아이디 찾기
+            </button>
+            <span class="text-gray-300">|</span>
+            <button 
+              type="button" 
+              @click="isFindPasswordModalOpen = true"
+              class="text-gray-600 hover:text-emerald-600 transition-colors"
+            >
+              비밀번호 찾기
+            </button>
+          </div>
+
           <button
             v-motion
             :hovered="{ scale: 1.02 }"
@@ -171,5 +196,17 @@ const handleGoogleLogin = () => {
         </div>
       </div>
     </div>
+
+    <!-- 아이디 찾기 모달 -->
+    <FindIdModal 
+      :is-open="isFindIdModalOpen" 
+      @close="isFindIdModalOpen = false" 
+    />
+
+    <!-- 비밀번호 찾기 모달 -->
+    <FindPasswordModal 
+      :is-open="isFindPasswordModalOpen" 
+      @close="isFindPasswordModalOpen = false" 
+    />
   </div>
 </template>
