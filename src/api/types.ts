@@ -66,6 +66,30 @@ export interface ChangePasswordRequest {
     newPassword: string
 }
 
+// 아이디 찾기 - 인증번호 발송
+export interface FindIdSendRequest {
+    email: string
+}
+
+// 아이디 찾기 - 인증번호 검증
+export interface FindIdVerifyRequest {
+    email: string
+    code: string
+}
+
+// 비밀번호 찾기 - 인증번호 발송
+export interface FindPwSendRequest {
+    id: string
+    email: string
+}
+
+// 비밀번호 찾기 - 인증번호 검증 및 재설정
+export interface FindPwVerifyRequest {
+    id: string
+    email: string
+    code: string
+}
+
 export interface FindAccountRequest {
     email?: string
     id?: string
