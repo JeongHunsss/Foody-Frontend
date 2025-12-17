@@ -5,6 +5,7 @@ import {
   Save, X, Plus, Trash2, Edit2
 } from 'lucide-vue-next'
 import Navbar from '@/components/Navbar.vue'
+import { adminApi } from '@/api/admin.api'
 
 interface ActivityLevel {
   level: number
@@ -72,7 +73,8 @@ const activeTab = ref<'role' | 'food' | 'activity' | 'report'>('report')
 
 // 권한 관리
 const targetUserId = ref('')
-const targetRole = ref('USER')
+const targetRole = ref<'ROLE_USER' | 'ROLE_ADMIN'>('ROLE_USER')
+const isUpdatingRole = ref(false)
 
 // 음식 관리
 const newFood = ref<Food>({
@@ -101,14 +103,35 @@ const reportCharacterId = ref('1')
 const reportComment = ref('')
 
 // 권한 수정 핸들러
-const handleUpdateRole = () => {
+const handleUpdateRole = async () => {
   if (!targetUserId.value) {
     alert('사용자 ID를 입력해주세요.')
     return
   }
-  alert(`사용자 ${targetUserId.value}의 권한이 ${targetRole.value}로 변경되었습니다.`)
-  targetUserId.value = ''
-  targetRole.value = 'USER'
+  
+  if (isUpdatingRole.value) return
+  
+  try {
+    isUpdatingRole.value = true
+    await adminApi.updateUserRole({
+      userId: targetUserId.value,
+      role: targetRole.value
+    })
+    alert(`사용자 ${targetUserId.value}의 권한이 ${targetRole.value}로 변경되었습니다.`)
+    targetUserId.value = ''
+    targetRole.value = 'ROLE_USER'
+  } catch (error: any) {
+    console.error('권한 수정 실패 사유:', error)
+    // 서버에서 보내는 에러 메시지 추출
+    const errorMessage = 
+      error.response?.data?.message ||  // Spring Boot 기본 형식
+      error.response?.data ||            // 문자열로 직접 반환된 경우
+      error.message ||                   // axios 에러 메시지
+      '알 수 없는 오류가 발생했습니다'
+    alert(`권한 수정에 실패했습니다: ${errorMessage}`)
+  } finally {
+    isUpdatingRole.value = false
+  }
 }
 
 // 음식 등록 핸들러
@@ -278,18 +301,21 @@ const handleSubmitReport = () => {
               v-model="targetRole"
               class="w-full px-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors bg-white"
             >
-              <option value="USER">USER</option>
-              <option value="ADMIN">ADMIN</option>
-              <option value="EXPERT">EXPERT</option>
+              <option value="ROLE_USER">USER</option>
+              <option value="ROLE_ADMIN">ADMIN</option>
             </select>
           </div>
 
           <button
             @click="handleUpdateRole"
-            class="w-full py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
+            :disabled="isUpdatingRole"
+            :class="[
+              'w-full py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2',
+              isUpdatingRole ? 'opacity-50 cursor-not-allowed' : ''
+            ]"
           >
-            <Save :size="20" />
-            권한 변경
+            <Save :size="20" :class="{ 'animate-spin': isUpdatingRole }" />
+            {{ isUpdatingRole ? '처리 중...' : '권한 변경' }}
           </button>
         </div>
       </div>

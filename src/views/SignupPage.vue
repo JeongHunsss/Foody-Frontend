@@ -5,6 +5,7 @@ import { Mail, Lock, User, Check, Send, Scale, Ruler, Calendar, Activity } from 
 import logoImage from '@/assets/foody_logo.png'
 import foodyEggImage from '@/assets/characters/foody_egg.png'
 import { publicApi } from '@/api/public.api'
+import { emailApi } from '@/api/email.api'
 import type { ActivityLevelResponse } from '@/api/types'
 
 const router = useRouter()
@@ -44,15 +45,93 @@ onMounted(async () => {
   }
 })
 
-const handleUsernameCheck = () => {
-  const isAvailable = Math.random() > 0.5
-  isUsernameAvailable.value = isAvailable
-  isUsernameChecked.value = true
+const isCheckingUsername = ref(false)
+
+const handleUsernameCheck = async () => {
+  if (!username.value) {
+    alert('아이디를 입력해주세요.')
+    return
+  }
+  
+  if (isCheckingUsername.value) return
+  
+  try {
+    isCheckingUsername.value = true
+    const isDuplicate = await authApi.checkIdDuplicate(username.value)
+    isUsernameAvailable.value = !isDuplicate // true면 중복, false면 사용 가능
+    isUsernameChecked.value = true
+  } catch (error: any) {
+    console.error('아이디 중복 체크 실패:', error)
+    alert(showError(error))
+  } finally {
+    isCheckingUsername.value = false
+  }
 }
 
-const handleSendEmail = () => {
-  isEmailSent.value = true
-  console.log('Verification email sent to:', email.value)
+const isSendingEmail = ref(false)
+
+const handleSendEmail = async () => {
+  if (!email.value) {
+    alert('이메일을 입력해주세요.')
+    return
+  }
+  
+  if (isSendingEmail.value) return
+  
+  try {
+    isSendingEmail.value = true
+    
+    // 이메일 중복 체크
+    const isDuplicate = await emailApi.checkEmailDuplicate(email.value)
+    if (isDuplicate) {
+      alert('이미 가입된 이메일입니다.')
+      return
+    }
+    
+    // 인증번호 발송
+    const response = await emailApi.sendVerificationCode(email.value)
+    isEmailSent.value = true
+    // 서버 응답 메시지 표시
+    alert(typeof response === 'string' ? response : '인증번호가 발송되었습니다.')
+  } catch (error: any) {
+    console.error('이메일 전송 실패:', error)
+    alert(showError(error))
+  } finally {
+    isSendingEmail.value = false
+  }
+}
+
+const isCodeVerified = ref(false)
+const isVerifyingCode = ref(false)
+
+const handleVerifyCode = async () => {
+  if (!verificationCode.value) {
+    alert('인증 코드를 입력해주세요.')
+    return
+  }
+  
+  if (verificationCode.value.length !== 6) {
+    alert('인증 코드 6자리를 입력해주세요.')
+    return
+  }
+  
+  if (isVerifyingCode.value) return
+  
+  try {
+    isVerifyingCode.value = true
+    const response = await emailApi.verifyCode({
+      email: email.value,
+      code: verificationCode.value
+    })
+    isCodeVerified.value = true
+    // 서버 응답 메시지 표시
+    alert(typeof response === 'string' ? response : '이메일 인증이 완료되었습니다.')
+  } catch (error: any) {
+    console.error('인증 코드 검증 실패:', error)
+    alert(showError(error))
+  } finally {
+    isVerifyingCode.value = false
+  }
 }
 
 import { authApi } from '@/api/auth.api'
@@ -68,8 +147,8 @@ const handleSubmit = async (e: Event) => {
     return
   }
   
-  if (!isEmailSent.value) {
-    alert('이메일 인증을 진행해주세요.')
+  if (!isEmailSent.value || !isCodeVerified.value) {
+    alert('이메일 인증을 완료해주세요.')
     return
   }
   
@@ -193,9 +272,11 @@ const handleSubmit = async (e: Event) => {
                     id="username"
                     v-model="username"
                     type="text"
-                    placeholder="아이디"
+                    placeholder="아이디 (4~20자)"
                     class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                     required
+                    minlength="4"
+                    maxlength="20"
                     @input="isUsernameChecked = false"
                   />
                 </div>
@@ -205,14 +286,17 @@ const handleSubmit = async (e: Event) => {
                   :tapped="{ scale: 0.98 }"
                   type="button"
                   @click="handleUsernameCheck"
+                  :disabled="isCheckingUsername || (isUsernameChecked && isUsernameAvailable)"
                   :class="[
                     'px-5 py-3 rounded-xl transition-colors whitespace-nowrap',
                     isUsernameChecked && isUsernameAvailable
                       ? 'bg-emerald-500 text-white'
+                      : isCheckingUsername
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   ]"
                 >
-                  {{ isUsernameChecked && isUsernameAvailable ? '✓ 사용가능' : '중복확인' }}
+                  {{ isCheckingUsername ? '확인중...' : (isUsernameChecked && isUsernameAvailable ? '✓ 사용가능' : '중복확인') }}
                 </button>
               </div>
               <p
@@ -255,6 +339,12 @@ const handleSubmit = async (e: Event) => {
                   minlength="8"
                 />
               </div>
+              <p
+                v-if="confirmPassword.length > 0"
+                :class="['text-sm mt-2', password === confirmPassword ? 'text-emerald-600' : 'text-red-600']"
+              >
+                {{ password === confirmPassword ? '✓ 비밀번호가 일치합니다.' : '✗ 비밀번호가 일치하지 않습니다.' }}
+              </p>
             </div>
           </div>
 
@@ -274,6 +364,7 @@ const handleSubmit = async (e: Event) => {
                   placeholder="홍길동"
                   class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                   required
+                  maxlength="50"
                 />
               </div>
             </div>
@@ -300,34 +391,62 @@ const handleSubmit = async (e: Event) => {
                   :tapped="{ scale: 0.98 }"
                   type="button"
                   @click="handleSendEmail"
-                  :disabled="isEmailSent"
+                  :disabled="isEmailSent || isSendingEmail"
                   :class="[
                     'px-5 py-3 rounded-xl transition-colors whitespace-nowrap flex items-center gap-2',
                     isEmailSent
                       ? 'bg-emerald-500 text-white'
+                      : isSendingEmail
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   ]"
                 >
-                  <Send :size="16" />
-                  {{ isEmailSent ? '전송완료' : '인증번호' }}
+                  <Send :size="16" :class="{ 'animate-pulse': isSendingEmail }" />
+                  {{ isSendingEmail ? '전송중...' : isEmailSent ? '전송완료' : '인증번호' }}
                 </button>
               </div>
               <p v-if="isEmailSent" class="text-sm text-emerald-600 mb-2">
                 인증 번호가 발송되었습니다.
               </p>
               <!-- 인증코드 -->
-              <div v-if="isEmailSent" class="relative">
-                <Check class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
-                <input
-                  id="verificationCode"
-                  v-model="verificationCode"
-                  type="text"
-                  placeholder="인증 코드 6자리"
-                  class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
-                  required
-                  maxlength="6"
-                />
+              <div v-if="isEmailSent" class="flex gap-2">
+                <div class="relative flex-1">
+                  <Check class="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+                  <input
+                    id="verificationCode"
+                    v-model="verificationCode"
+                    type="text"
+                    placeholder="인증 코드 6자리"
+                    class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
+                    required
+                    maxlength="6"
+                  />
+                </div>
+                <button
+                  v-motion
+                  :hovered="{ scale: 1.02 }"
+                  :tapped="{ scale: 0.98 }"
+                  type="button"
+                  @click="handleVerifyCode"
+                  :disabled="isCodeVerified || isVerifyingCode"
+                  :class="[
+                    'px-5 py-3 rounded-xl transition-colors whitespace-nowrap',
+                    isCodeVerified
+                      ? 'bg-emerald-500 text-white'
+                      : isVerifyingCode
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ]"
+                >
+                  {{ isVerifyingCode ? '확인중...' : isCodeVerified ? '✓ 인증완료' : '코드확인' }}
+                </button>
               </div>
+              <p
+                v-if="isCodeVerified"
+                class="text-sm text-emerald-600 mt-2"
+              >
+                이메일 인증이 완료되었습니다.
+              </p>
             </div>
 
             <!-- 나이, 성별 -->
@@ -392,8 +511,8 @@ const handleSubmit = async (e: Event) => {
                     placeholder="170"
                     class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                     required
-                    min="50"
-                    max="250"
+                    min="1"
+                    step="0.1"
                   />
                 </div>
               </div>
@@ -408,8 +527,8 @@ const handleSubmit = async (e: Event) => {
                     placeholder="65"
                     class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                     required
-                    min="20"
-                    max="300"
+                    min="1"
+                    step="0.1"
                   />
                 </div>
               </div>

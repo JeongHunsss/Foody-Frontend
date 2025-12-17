@@ -202,7 +202,7 @@ export interface ReportDetailResponse {
 
 export interface UpdateRoleRequest {
     userId: string
-    role: 'ROLE_USER' | 'ROLE_ADMIN' | 'ROLE_GUEST'
+    role: 'ROLE_USER' | 'ROLE_ADMIN'
 }
 
 export interface FoodRequest {
