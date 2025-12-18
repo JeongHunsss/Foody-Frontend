@@ -102,22 +102,37 @@ export const useAuthStore = defineStore('auth', () => {
             console.log('User loaded with StdInfo:', user.value) // 디버깅용
         } catch (error) {
             console.error('Failed to load user info:', error)
-            // 토큰이 만료되었거나 유효하지 않은 경우
-            logout()
+            // 에러를 throw하여 호출자가 처리하도록 함
+            throw error
         }
     }
 
     /**
      * 로컬 스토리지에서 인증 정보 복원
+     * 토큰의 유효성을 검증한 후에만 로그인 상태로 복원
      */
     async function loadFromStorage() {
         const storedToken = localStorage.getItem('token')
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
 
         if (storedToken && isLoggedIn) {
+            // 먼저 토큰을 설정 (API 요청에 필요)
             token.value = storedToken
-            // 토큰이 있으면 사용자 정보 로드
-            await loadUserInfo()
+
+            try {
+                // 서버에 요청을 보내서 토큰 유효성 검증
+                await loadUserInfo()
+                // 성공하면 토큰이 유효함
+            } catch (error) {
+                // 토큰이 만료되었거나 유효하지 않음
+                console.warn('Stored token is invalid or expired, clearing authentication state')
+                // 상태 초기화
+                user.value = null
+                token.value = null
+                localStorage.removeItem('token')
+                localStorage.removeItem('isLoggedIn')
+                localStorage.removeItem('userRole')
+            }
         }
     }
 
