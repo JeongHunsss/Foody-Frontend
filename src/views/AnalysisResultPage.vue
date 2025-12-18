@@ -9,6 +9,7 @@ import { userApi } from '@/api/user.api'
 import { characterApi } from '@/api/character.api'
 import type { ReportResponse, CharacterResponse } from '@/api/types'
 import { showError } from '@/utils/errorHandler'
+import ssassakFoody from '@/assets/characters/ssassak_foody.png'
 
 const router = useRouter()
 const route = useRoute()
@@ -112,9 +113,9 @@ const analysisResult = computed(() => {
       sugar: Math.round((report.userStdSugar || 50) * 10) / 10,
       sodium: Math.round((report.userStdNatrium || 2000) * 10) / 10
     },
-    characterId: report.characterId || 1,
-    characterName: characterData.value?.name || '기본 푸디',
-    characterImg: characterData.value?.img || '',
+    characterId: report.characterId || null,
+    characterName: characterData.value?.name || '분석 중..',
+    characterImg: characterData.value?.img || ssassakFoody,
     meals: (report.meals || []).map(meal => {
       const mealTypeMap: Record<string, 'breakfast' | 'lunch' | 'dinner' | 'snack'> = {
         'BREAKFAST': 'breakfast',
@@ -280,12 +281,10 @@ const getScoreGradient = (score: number) => {
               class="w-48 h-48 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-full flex items-center justify-center overflow-hidden"
             >
               <img 
-                v-if="analysisResult.characterImg" 
                 :src="analysisResult.characterImg" 
                 :alt="analysisResult.characterName"
                 class="w-full h-full object-cover"
               />
-              <span v-else class="text-8xl">🌱</span>
               </div>
             <p class="text-center mt-4 text-gray-700">{{ analysisResult.characterName }}</p>
           </div>
@@ -323,7 +322,7 @@ const getScoreGradient = (score: number) => {
               <div class="flex items-start gap-3">
                 <span class="text-3xl flex-shrink-0">💬</span>
                 <div>
-                  <p class="text-sm text-emerald-700 mb-2">AI 푸디의 코멘트</p>
+                  <p class="text-sm text-emerald-700 mb-2">푸디의 코멘트</p>
                   <p class="text-gray-700 leading-relaxed">{{ analysisResult.comment }}</p>
                 </div>
               </div>

@@ -6,6 +6,7 @@ import {
   Edit2, Save, X, ChevronRight, FileText, ChevronLeft, Trash2, Lock, Eye, EyeOff
 } from 'lucide-vue-next'
 import Navbar from '@/components/Navbar.vue'
+import ssassakFoody from '@/assets/characters/ssassak_foody.png'
 import { useAuthStore } from '@/stores/auth'
 import { userApi } from '@/api/user.api'
 import { reportApi } from '@/api/report.api'
@@ -793,14 +794,13 @@ onMounted(async () => {
                   <div class="flex items-center gap-2 text-sm text-gray-600">
                     <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center flex-shrink-0">
                       <img 
-                        v-if="getCharacterById(report.characterId)?.img" 
-                        :src="getCharacterById(report.characterId)!.img" 
-                        :alt="getCharacterById(report.characterId)!.name"
+                        :src="getCharacterById(report.characterId)?.img || ssassakFoody" 
+                        :alt="getCharacterById(report.characterId)?.name || '새싹 푸디'"
                         class="w-full h-full object-cover"
                       />
-                      <span v-else class="text-2xl">🌱</span>
+
                     </div>
-                    <span>{{ getCharacterById(report.characterId)?.name || '기본 푸디' }}</span>
+                    <span>{{ getCharacterById(report.characterId)?.name || '분석 중..' }}</span>
                   </div>
                   <p class="text-gray-700 bg-emerald-50 rounded-xl p-3 text-sm mb-3">
                     💬 {{ report.comment }}
