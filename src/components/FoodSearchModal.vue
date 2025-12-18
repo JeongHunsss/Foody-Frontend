@@ -31,7 +31,7 @@ const emit = defineEmits<Emits>()
 const searchQuery = ref('')
 const selectedCategory = ref('전체')
 const currentPage = ref(1)
-const foodAmounts = ref<Record<string, number>>({})
+const foodAmounts = ref<Record<string, number | null>>({})
 const favoriteFoods = ref<string[]>([])
 const customFoods = ref<Food[]>([])
 const showManualAdd = ref(false)
@@ -202,12 +202,19 @@ watch(selectedCategory, () => {
 })
 
 const getFoodAmount = (foodCode: string) => {
-  return foodAmounts.value[foodCode] || 100
+  const amount = foodAmounts.value[foodCode]
+  if (amount === null) return ''
+  return amount === undefined ? 100 : amount
 }
 
-const setFoodAmount = (foodCode: string, amount: number) => {
-  if (amount >= 1 && amount <= 10000) {
-    foodAmounts.value[foodCode] = amount
+const setFoodAmount = (foodCode: string, amount: number | null) => {
+  foodAmounts.value[foodCode] = amount
+}
+
+const handleAmountBlur = (foodCode: string) => {
+  const amount = foodAmounts.value[foodCode]
+  if (!amount || amount < 1) {
+    foodAmounts.value[foodCode] = 100
   }
 }
 
@@ -224,13 +231,13 @@ const handleClose = () => {
   emit('close')
 }
 
-const handleManualAdd = (food: Food) => {
+const handleManualAdd = (food: Food, amount: number) => {
   // customFoods 목록 업데이트
   const savedCustomFoods = localStorage.getItem('customFoods')
   customFoods.value = savedCustomFoods ? JSON.parse(savedCustomFoods) : []
   
-  // 음식을 현재 식사에 추가
-  emit('add-food', food, 100)
+  // 음식을 현재 식사에 추가 (입력받은 양 사용)
+  emit('add-food', food, amount)
   showManualAdd.value = false
 }
 
@@ -414,7 +421,8 @@ const handleImageAdd = (food: Food, amount: number) => {
                       max="10000"
                       step="1"
                       :value="getFoodAmount(food.code)"
-                      @input="setFoodAmount(food.code, parseFloat(($event.target as HTMLInputElement).value) || 100)"
+                      @input="setFoodAmount(food.code, ($event.target as HTMLInputElement).value === '' ? null : parseFloat(($event.target as HTMLInputElement).value))"
+                      @blur="handleAmountBlur(food.code)"
                       class="w-20 px-3 py-2 border border-emerald-200 rounded-lg focus:outline-none focus:border-emerald-500 text-center"
                     />
                     <span class="text-sm text-gray-600">g</span>
@@ -424,7 +432,7 @@ const handleImageAdd = (food: Food, amount: number) => {
                   v-motion
                   :hovered="{ scale: 1.05 }"
                   :tapped="{ scale: 0.95 }"
-                  @click="handleAddFood(food, getFoodAmount(food.code))"
+                  @click="handleAddFood(food, (typeof getFoodAmount(food.code) === 'number' ? getFoodAmount(food.code) : 100) as number)"
                   class="px-6 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg hover:shadow-lg transition-shadow flex items-center gap-2 mt-5"
                 >
                   <Plus :size="16" />

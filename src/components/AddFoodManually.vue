@@ -5,7 +5,7 @@ import type { Food } from '@/types/food'
 
 interface Emits {
   (e: 'close'): void
-  (e: 'add', food: Food): void
+  (e: 'add', food: Food, amount: number): void
 }
 
 const emit = defineEmits<Emits>()
@@ -18,6 +18,7 @@ const protein = ref('')
 const fat = ref('')
 const sugar = ref('')
 const sodium = ref('')
+const eatenAmount = ref(100) // 먹은 양 기본값 100
 
 const handleSubmit = () => {
   const newFood: Food = {
@@ -39,7 +40,7 @@ const handleSubmit = () => {
   customFoods.push(newFood)
   localStorage.setItem('customFoods', JSON.stringify(customFoods))
 
-  emit('add', newFood)
+  emit('add', newFood, eatenAmount.value)
 }
 </script>
 
@@ -70,7 +71,6 @@ const handleSubmit = () => {
               <div class="flex items-center justify-between">
                 <div>
                   <h2 class="text-white mb-1">음식 직접 입력</h2>
-                  <p class="text-sm text-white/90">영양 정보를 100g 기준으로 입력해주세요</p>
                 </div>
                 <button
                   @click="emit('close')"
@@ -106,6 +106,8 @@ const handleSubmit = () => {
                   />
                 </div>
               </div>
+
+
 
               <div class="grid md:grid-cols-2 gap-4">
                 <div>
@@ -188,6 +190,21 @@ const handleSubmit = () => {
                     class="w-full px-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                     required
                   />
+                </div>
+              </div>
+
+               <!-- 먹은 양 입력 추가 -->
+              <div>
+                <label class="block text-sm text-gray-700 mb-2">먹은 양 (g) *</label>
+                 <div class="relative">
+                  <input
+                    v-model.number="eatenAmount"
+                    type="number"
+                    min="1"
+                    class="w-full px-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
+                    required
+                  />
+                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">g</span>
                 </div>
               </div>
 
