@@ -11,7 +11,9 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const percentage = computed(() => Math.min((props.current / props.recommended) * 100, 100))
+const rawPercentage = computed(() => (props.current / props.recommended) * 100)
+const displayPercentage = computed(() => Math.round(rawPercentage.value))
+const barPercentage = computed(() => Math.min(rawPercentage.value, 100))
 const isOver = computed(() => props.current > props.recommended)
 </script>
 
@@ -30,12 +32,12 @@ const isOver = computed(() => props.current > props.recommended)
       <div
         v-motion
         :initial="{ width: '0%' }"
-        :enter="{ width: `${percentage}%`, transition: { duration: 1000, delay: 200 } }"
+        :enter="{ width: `${barPercentage}%`, transition: { duration: 1000, delay: 200 } }"
         :class="['h-full rounded-full', isOver ? 'bg-red-500' : color]"
       ></div>
     </div>
     <div class="text-right text-xs text-gray-500">
-      {{ percentage.toFixed(0) }}%
+      {{ displayPercentage }}%
     </div>
   </div>
 </template>
