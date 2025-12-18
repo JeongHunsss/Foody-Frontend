@@ -118,7 +118,7 @@ const handleAnalyze = () => {
   isAnalysisChoiceModalOpen.value = true
 }
 
-const handleChooseAI = async () => {
+const handleAnalyzeRequest = async (isWaited: boolean) => {
   isAnalysisChoiceModalOpen.value = false
   isAnalysisLoadingModalOpen.value = true
   
@@ -163,7 +163,7 @@ const handleChooseAI = async () => {
     
     // Submit to API
     await reportApi.createReport({ 
-      isWaited: false, // AI 바로 분석
+      isWaited: isWaited, 
       meals: reportMeals 
     })
     
@@ -194,9 +194,12 @@ const handleChooseAI = async () => {
   }
 }
 
-const handleChooseExpert = () => {
-  isAnalysisChoiceModalOpen.value = false
-  alert('전문가 분석 서비스는 준비 중입니다!')
+const handleChooseAI = async () => {
+  await handleAnalyzeRequest(false)
+}
+
+const handleChooseExpert = async () => {
+  await handleAnalyzeRequest(true)
 }
 </script>
 
