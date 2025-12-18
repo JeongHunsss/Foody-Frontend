@@ -11,7 +11,7 @@ import { userApi } from '@/api/user.api'
 import { reportApi } from '@/api/report.api'
 import { publicApi } from '@/api/public.api'
 import { characterApi } from '@/api/character.api'
-import type { UserResponse, Report, ActivityLevelResponse, CharacterResponse } from '@/api/types'
+import type { UserResponse, ReportListResponse, ActivityLevelResponse, CharacterResponse } from '@/api/types'
 import { showError } from '@/utils/errorHandler'
 
 const router = useRouter()
@@ -20,7 +20,7 @@ const authStore = useAuthStore()
 // 사용자 데이터
 const userData = ref<UserResponse | null>(null)
 const editedData = ref<UserResponse | null>(null)
-const reports = ref<Report[]>([])
+const reports = ref<ReportListResponse[]>([])
 const activityLevels = ref<ActivityLevelResponse[]>([])
 const characters = ref<CharacterResponse[]>([])
 const isLoading = ref(false)
@@ -780,8 +780,13 @@ onMounted(async () => {
               <div class="flex-1">
                 <div class="flex items-center gap-3 mb-3">
                   <h3 class="text-gray-900">{{ new Date(report.createdAt).toLocaleDateString() }}</h3>
-                  <div class="px-4 py-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-full text-sm">
-                    {{ report.score }}점
+                  <div class="flex items-center gap-2">
+                    <span v-if="report.isWaited" class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                      분석 대기중
+                    </span>
+                    <div class="px-4 py-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-full text-sm">
+                      {{ report.score }}점
+                    </div>
                   </div>
                 </div>
                 <div class="space-y-2">
@@ -797,9 +802,37 @@ onMounted(async () => {
                     </div>
                     <span>{{ getCharacterById(report.characterId)?.name || '기본 푸디' }}</span>
                   </div>
-                  <p class="text-gray-700 bg-emerald-50 rounded-xl p-3 text-sm">
+                  <p class="text-gray-700 bg-emerald-50 rounded-xl p-3 text-sm mb-3">
                     💬 {{ report.comment }}
                   </p>
+                  
+                  <!-- 영양소 정보 -->
+                  <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div class="bg-gray-50 p-2 rounded-lg text-center">
+                      <div class="text-gray-500 mb-1">칼로리</div>
+                      <div class="font-semibold text-gray-900">{{ report.totalKcal || 0 }} kcal</div>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded-lg text-center">
+                      <div class="text-gray-500 mb-1">탄수화물</div>
+                      <div class="font-semibold text-blue-600">{{ report.totalCarb || 0 }} g</div>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded-lg text-center">
+                      <div class="text-gray-500 mb-1">단백질</div>
+                      <div class="font-semibold text-emerald-600">{{ report.totalProtein || 0 }} g</div>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded-lg text-center">
+                      <div class="text-gray-500 mb-1">지방</div>
+                      <div class="font-semibold text-yellow-600">{{ report.totalFat || 0 }} g</div>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded-lg text-center">
+                      <div class="text-gray-500 mb-1">당류</div>
+                      <div class="font-semibold text-pink-600">{{ report.totalSugar || 0 }} g</div>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded-lg text-center">
+                      <div class="text-gray-500 mb-1">나트륨</div>
+                      <div class="font-semibold text-purple-600">{{ report.totalNatrium || 0 }} mg</div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <ChevronRight :size="24" class="text-gray-400 flex-shrink-0 ml-4" />

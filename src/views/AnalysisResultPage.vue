@@ -7,7 +7,7 @@ import NutritionGauge from '@/components/NutritionGauge.vue'
 import { reportApi } from '@/api/report.api'
 import { userApi } from '@/api/user.api'
 import { characterApi } from '@/api/character.api'
-import type { Report, CharacterResponse } from '@/api/types'
+import type { ReportResponse, CharacterResponse } from '@/api/types'
 import { showError } from '@/utils/errorHandler'
 
 const router = useRouter()
@@ -15,7 +15,7 @@ const route = useRoute()
 
 // State
 const isLoading = ref(true)
-const reportData = ref<Report | null>(null)
+const reportData = ref<ReportResponse | null>(null)
 const userName = ref('')
 const characterData = ref<CharacterResponse | null>(null)
 const allCharacters = ref<CharacterResponse[]>([])
@@ -136,7 +136,7 @@ const analysisResult = computed(() => {
           sugar: Math.round((mealFood.eatenSugar || 0) * 10) / 10,
           sodium: Math.round((mealFood.eatenNatrium || 0) * 10) / 10,
           amount: Math.round(mealFood.eatenWeight || 0)
-        })),
+        })).filter(food => food.amount > 0),
         totals: {
           calories: Math.round(meal.totalKcal || 0),
           carbs: Math.round((meal.totalCarb || 0) * 10) / 10,
@@ -147,7 +147,8 @@ const analysisResult = computed(() => {
         }
       }
     }),
-    analysisDate: report.createdAt || new Date().toISOString()
+    analysisDate: report.createdAt || new Date().toISOString(),
+    isWaited: report.isWaited
   }
 })
 
@@ -237,6 +238,23 @@ const getScoreGradient = (score: number) => {
           </div>
         </div>
       </div>
+
+      <!-- 분석 대기 중 알림 배너 -->
+      <div 
+        v-if="analysisResult?.isWaited"
+        class="bg-amber-50 border-y border-amber-200"
+      >
+        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
+          <div class="bg-amber-100 p-2 rounded-full flex-shrink-0 animate-pulse">
+            <span class="text-xl">⏳</span>
+          </div>
+          <div>
+            <h3 class="text-amber-900 font-bold">전문가 분석 대기 중</h3>
+            <p class="text-amber-700 text-sm">영양 전문가가 회원님의 식단 기록을 분석하고 있습니다. 분석이 완료되면 코멘트와 점수가 업데이트됩니다.</p>
+          </div>
+        </div>
+      </div>
+
 
     <div class="max-w-6xl mx-auto px-4 py-8 space-y-8">
       <!-- 점수 & 캐릭터 섹션 -->
@@ -459,33 +477,42 @@ const getScoreGradient = (score: number) => {
             <!-- 끼니 헤더 -->
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-gray-900">{{ mealTimeNames[meal.mealTime] }}</h3>
-              <div class="flex items-center gap-4 text-sm">
-                <span class="text-purple-600">{{ meal.totals.calories }}kcal</span>
-                <span class="text-blue-600">탄 {{ meal.totals.carbs }}g</span>
-                <span class="text-emerald-600">단 {{ meal.totals.protein }}g</span>
-                <span class="text-orange-600">지 {{ meal.totals.fat }}g</span>
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <span class="text-purple-600 font-medium">{{ meal.totals.calories }}kcal</span>
+                <span class="text-blue-600">탄수화물 {{ meal.totals.carbs }}g</span>
+                <span class="text-emerald-600">단백질 {{ meal.totals.protein }}g</span>
+                <span class="text-orange-600">지방 {{ meal.totals.fat }}g</span>
+                <span class="text-pink-600">당 {{ meal.totals.sugar }}g</span>
+                <span class="text-indigo-600">나트륨 {{ meal.totals.sodium }}mg</span>
               </div>
             </div>
 
             <!-- 음식 목록 -->
-            <div class="space-y-3">
+            <div v-if="meal.foods.length > 0" class="space-y-3">
               <div
                 v-for="food in meal.foods"
                 :key="food.id"
-                class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors gap-3"
               >
                 <div class="flex-1">
-                  <p class="text-gray-900">{{ food.name }}</p>
+                  <p class="text-gray-900 font-medium">{{ food.name }}</p>
                   <p class="text-sm text-gray-500">{{ food.category }} · {{ food.amount }}g</p>
                 </div>
-                <div class="flex gap-3 text-sm">
-                  <span class="text-purple-600">{{ food.calories }}kcal</span>
-                  <span class="text-gray-300">|</span>
-                  <span class="text-blue-600">탄 {{ food.carbs }}g</span>
-                  <span class="text-emerald-600">단 {{ food.protein }}g</span>
-                  <span class="text-orange-600">지 {{ food.fat }}g</span>
+                <div class="flex flex-wrap gap-3 text-sm items-center">
+                  <span class="text-purple-600 font-medium">{{ food.calories }}kcal</span>
+                  <span class="text-gray-300 hidden sm:inline">|</span>
+                  <span class="text-blue-600">탄수화물 {{ food.carbs }}g</span>
+                  <span class="text-emerald-600">단백질 {{ food.protein }}g</span>
+                  <span class="text-orange-600">지방 {{ food.fat }}g</span>
+                  <span class="text-pink-600">당 {{ food.sugar }}g</span>
+                  <span class="text-indigo-600">나트륨 {{ food.sodium }}mg</span>
                 </div>
               </div>
+            </div>
+            
+            <!-- 음식이 없을 경우 메시지 -->
+            <div v-else class="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              입력한 음식이 없습니다.
             </div>
           </div>
         </div>
