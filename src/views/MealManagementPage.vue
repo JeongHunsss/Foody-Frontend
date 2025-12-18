@@ -76,6 +76,13 @@ const handleRemoveFood = (mealTime: MealTime, index: number) => {
   meals.value[mealTime] = meals.value[mealTime].filter((_, i) => i !== index)
 }
 
+// Helper to parse standard string (e.g. "100g" -> 100)
+const parseStandard = (standard: string | undefined): number => {
+  if (!standard) return 100
+  const numStr = standard.replace(/[^0-9.]/g, '')
+  return numStr ? Number(numStr) : 100
+}
+
 const totals = computed(() => {
   let totalCalories = 0
   let totalCarbs = 0
@@ -86,7 +93,9 @@ const totals = computed(() => {
 
   Object.values(meals.value).forEach((mealItems) => {
     mealItems.forEach(({ food, amount }) => {
-      const ratio = amount / 100
+      const standard = parseStandard(food.servingSize)
+      const ratio = amount / standard
+
       totalCalories += food.calories * ratio
       totalCarbs += food.carbs * ratio
       totalProtein += food.protein * ratio
@@ -140,18 +149,20 @@ const handleAnalyzeRequest = async (isWaited: boolean) => {
       if (items.length === 0) return
 
       const foodItems = items.map((item) => {
-        const ratio = item.amount / 100
+        const standard = parseStandard(item.food.servingSize)
         return {
-           foodCode: item.food.code,
+           foodCode: item.food.code.startsWith('custom-') ? null : item.food.code,
            name: item.food.name,
            eatenWeight: item.amount,
-           // 영양소 계산 (비율 적용)
-           kcal: item.food.calories * ratio,
-           carb: item.food.carbs * ratio,
-           protein: item.food.protein * ratio,
-           fat: item.food.fat * ratio,
-           sugar: item.food.sugar * ratio,
-           natrium: item.food.sodium * ratio
+           standard: standard, // 기준량 전송
+           
+           // Base 영양소 정보 전송 (계산된 값 아님)
+           kcal: item.food.calories,
+           carb: item.food.carbs,
+           protein: item.food.protein,
+           fat: item.food.fat,
+           sugar: item.food.sugar,
+           natrium: item.food.sodium
         }
       })
 
@@ -264,10 +275,12 @@ const handleChooseExpert = async () => {
                       <span class="text-sm text-gray-500">{{ item.amount }}g</span>
                     </div>
                     <div class="flex gap-4 mt-2 text-sm text-gray-600">
-                      <span>{{ Math.round(item.food.calories * (item.amount / 100)) }}kcal</span>
-                      <span>탄 {{ Math.round(item.food.carbs * (item.amount / 100) * 10) / 10 }}g</span>
-                      <span>단 {{ Math.round(item.food.protein * (item.amount / 100) * 10) / 10 }}g</span>
-                      <span>지 {{ Math.round(item.food.fat * (item.amount / 100) * 10) / 10 }}g</span>
+                      <span>{{ Math.round(item.food.calories * (item.amount / parseStandard(item.food.servingSize))) }}kcal</span>
+                      <span>탄수화물 {{ Math.round(item.food.carbs * (item.amount / parseStandard(item.food.servingSize)) * 10) / 10 }}g</span>
+                      <span>단백질 {{ Math.round(item.food.protein * (item.amount / parseStandard(item.food.servingSize)) * 10) / 10 }}g</span>
+                      <span>지방 {{ Math.round(item.food.fat * (item.amount / parseStandard(item.food.servingSize)) * 10) / 10 }}g</span>
+                      <span>당 {{ Math.round(item.food.sugar * (item.amount / parseStandard(item.food.servingSize)) * 10) / 10 }}g</span>
+                      <span>나트륨 {{ Math.round(item.food.sodium * (item.amount / parseStandard(item.food.servingSize)) * 10) / 10 }}g</span>
                     </div>
                   </div>
                   <button
