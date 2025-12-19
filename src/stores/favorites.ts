@@ -29,7 +29,8 @@ export const useFavoriteStore = defineStore('favorites', () => {
       const codesResponse: FavoriteCodeResponse[] = await foodApi.getAllFavoriteCodes()
       favoriteMap.value.clear()
       codesResponse.forEach(item => {
-        const code = item.foodCode || (item.userFoodCode ? item.userFoodCode.toString() : '')
+        // userFoodCode가 있으면 'custom-' 접두사를 붙여서 Map에 저장 (UI와 통일)
+        const code = item.foodCode || (item.userFoodCode ? `custom-${item.userFoodCode}` : '')
         if (code) {
           favoriteMap.value.set(code, item.favoriteId)
         }
@@ -51,13 +52,28 @@ export const useFavoriteStore = defineStore('favorites', () => {
     isLoading.value = true
     error.value = ''
     try {
-      let request: FavoriteRequest
-      if (isUserFood) {
-        // 사용자 정의 음식: foodCode를 아예 보내지 않음 (undefined)
-        request = { userFoodCode: parseInt(foodCode) }
-      } else {
-        // 일반 음식: foodCode만 보냄
-        request = { foodCode }
+      let request: FavoriteRequest = {}
+      const codeStr = foodCode.toString()
+
+      // 1. 'custom-' 접두사가 있는 경우 -> UserFood
+      if (codeStr.startsWith('custom-')) {
+        const parsed = parseInt(codeStr.replace('custom-', ''), 10)
+        if (!isNaN(parsed)) {
+          request.userFoodCode = parsed
+        }
+      }
+      // 2. 숫자로만 구성된 경우 -> UserFood (사용자 요청 사항 반영)
+      else if (!isNaN(Number(codeStr))) {
+        request.userFoodCode = parseInt(codeStr, 10)
+      }
+      // 3. 그 외 (일반 문자열) -> DB Food
+      else {
+        request.foodCode = codeStr
+      }
+
+      if (!request.foodCode && !request.userFoodCode) {
+        console.warn("Invalid fav request detected", foodCode)
+        // Fallback logic if needed, or allow it to fail at API level
       }
 
       console.log('Sending Favorite Request:', request)

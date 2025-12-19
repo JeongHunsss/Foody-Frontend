@@ -62,7 +62,7 @@ const loadFoods = async (resetPage = false) => {
       totalPages.value = response.totalPages
       
       apiFoods.value = response.content.map((fav: any) => ({
-        code: fav.foodCode || (fav.userFoodCode ? fav.userFoodCode.toString() : ''),
+        code: fav.foodCode || (fav.userFoodCode ? `custom-${fav.userFoodCode}` : ''),
         name: fav.name,
         category: '찜한 음식',
         servingSize: fav.standard,
