@@ -48,7 +48,7 @@ export const useFavoriteStore = defineStore('favorites', () => {
     return await foodApi.getFavoriteList(page, filter)
   }
 
-  const addFavorite = async (foodCode: string, isUserFood: boolean = false) => {
+  const addFavorite = async (foodCode: string) => {
     isLoading.value = true
     error.value = ''
     try {

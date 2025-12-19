@@ -29,6 +29,7 @@ const isModalOpen = ref(false)
 const selectedMealTime = ref<MealTime>('breakfast')
 const isAnalysisChoiceModalOpen = ref(false)
 const isAnalysisLoadingModalOpen = ref(false)
+const isAnalysisFinished = ref(false)
 
 const MEAL_LABELS: Record<MealTime, string> = {
   breakfast: '아침',
@@ -181,10 +182,15 @@ const handleAnalyzeRequest = async (isWaited: boolean) => {
     // Clear local storage
     localStorage.removeItem('currentMeals')
     
+    // 백엔드 처리 완료 신호 전송 (로딩 게이지 100%로)
+    isAnalysisFinished.value = true
+
+    // 잠시 완료 상태(100% 게이지)를 보여준 뒤 이동
     setTimeout(() => {
       isAnalysisLoadingModalOpen.value = false
+      isAnalysisFinished.value = false // 초기화
       router.push('/analyze/result')
-    }, 3000)
+    }, 1400) // 1.4초 대기 (애니메이션 마무리 시간 고려)
   } catch (error: any) {
     isAnalysisLoadingModalOpen.value = false
     
@@ -380,6 +386,9 @@ const handleChooseExpert = async () => {
     />
 
     <!-- Analysis Loading Modal -->
-    <AnalysisLoadingModal :is-open="isAnalysisLoadingModalOpen" />
+    <AnalysisLoadingModal 
+      :is-open="isAnalysisLoadingModalOpen" 
+      :is-finished="isAnalysisFinished"
+    />
   </div>
 </template>
