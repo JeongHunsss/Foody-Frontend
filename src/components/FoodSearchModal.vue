@@ -55,10 +55,46 @@ const loadFoods = async (resetPage = false) => {
   
   isLoading.value = true
   try {
-    // 특별 카테고리는 API 호출하지 않음
-    if (selectedCategory.value === '찜한 음식' || selectedCategory.value === '직접 입력') {
-      apiFoods.value = []
-      totalPages.value = 1
+    // 찜한 음식 처리
+    if (selectedCategory.value === '찜한 음식') {
+      const response = await foodApi.getFavoriteList(currentPage.value)
+      
+      totalPages.value = response.totalPages
+      
+      apiFoods.value = response.content.map((fav: any) => ({
+        code: fav.foodCode || (fav.userFoodCode ? fav.userFoodCode.toString() : ''),
+        name: fav.name,
+        category: '찜한 음식',
+        servingSize: fav.standard,
+        calories: fav.kcal,
+        carbs: fav.carb,
+        protein: fav.protein,
+        fat: fav.fat,
+        sugar: fav.sugar,
+        sodium: fav.natrium
+      }))
+      isLoading.value = false
+      return
+    }
+
+    // 직접 입력 (User Foods) API 호출
+    if (selectedCategory.value === '직접 입력') {
+      const response = await foodApi.getUserFoodList(currentPage.value)
+      
+      totalPages.value = response.totalPages
+
+      apiFoods.value = response.content.map((item: any) => ({
+        code: item.code,
+        name: item.name,
+        category: '직접 입력',
+        servingSize: `${item.standard}`,
+        calories: item.kcal,
+        carbs: item.carb,
+        protein: item.protein,
+        fat: item.fat,
+        sugar: item.sugar,
+        sodium: item.natrium
+      }))
       isLoading.value = false
       return
     }
@@ -103,14 +139,12 @@ const loadCategories = async () => {
   }
 }
 
+console.log('FoodSearchModal setup running')
+
 onMounted(async () => {
+  console.log('FoodSearchModal mounted')
   // 찜한 음식 목록 불러오기 (API)
   await store.fetchFavorites()
-
-  const savedCustomFoods = localStorage.getItem('customFoods')
-  if (savedCustomFoods) {
-    customFoods.value = JSON.parse(savedCustomFoods)
-  }
 
   // 음식 목록 및 카테고리 불러오기
   await Promise.all([loadFoods(), loadCategories()])
@@ -131,43 +165,28 @@ watch(currentPage, async () => {
   await loadFoods()
 })
 
-const toggleFavorite = async (foodCode: string) => {
-  if (store.isFavorite(foodCode)) {
-    const favoriteId = store.findFavoriteIdByCode(foodCode)
+const toggleFavorite = async (food: Food) => {
+  if (store.isFavorite(food.code)) {
+    const favoriteId = store.findFavoriteIdByCode(food.code)
     if (favoriteId) {
       await store.removeFavorite(favoriteId)
     }
   } else {
-    // 일반 음식으로 가정하고 추가
-    // TODO: 사용자 정의 음식일 경우 구분 로직 필요
-    await store.addFavorite(foodCode)
+    // 직접 입력 음식인 경우 isUserFood=true 전달
+    const isUserFood = food.category === '직접 입력'
+    await store.addFavorite(food.code, isUserFood)
   }
 }
 
 // 전체 음식 목록 (API + customFoods)
 const allFoods = computed(() => {
   // 특별 카테고리 처리
+  // 특별 카테고리 처리 (API 로드 완료 후 apiFoods에 들어있음)
   if (selectedCategory.value === '찜한 음식') {
-    return store.favorites.map(fav => ({
-      code: fav.foodCode || (fav.userFoodCode ? fav.userFoodCode.toString() : ''),
-      name: fav.name,
-      category: '찜한 음식',
-      servingSize: fav.standard,
-      calories: fav.kcal,
-      carbs: fav.carb,
-      protein: fav.protein,
-      fat: fav.fat,
-      sugar: fav.sugar,
-      sodium: fav.natrium
-    }))
+    return apiFoods.value
   }
   
-  if (selectedCategory.value === '직접 입력') {
-    // 직접 입력한 음식만 표시
-    return customFoods.value
-  }
-  
-  // 일반 카테고리(전체 포함) - API 결과만 표시
+  // 직접 입력 및 일반 카테고리는 apiFoods에 저장됨 (loadFoods에서 처리)
   return apiFoods.value
 })
 
@@ -241,17 +260,25 @@ const handleClose = () => {
   emit('close')
 }
 
-const handleManualAdd = (food: Food, amount: number) => {
-  // customFoods 목록 업데이트
-  const savedCustomFoods = localStorage.getItem('customFoods')
-  customFoods.value = savedCustomFoods ? JSON.parse(savedCustomFoods) : []
-  
+const handleManualAdd = async (food: Food, amount: number) => {
+  try {
+  } catch (err) {
+    console.error('Failed to create manual food object:', err)
+  }
+
+  // 직접 입력 음식은 custom-prefix
+  if (!food.code) {
+      food.code = `custom-${Date.now()}`
+  }
+
   // 음식을 현재 식사에 추가 (입력받은 양 사용)
   emit('add-food', food, amount)
   showManualAdd.value = false
 }
 
 const handleImageAdd = (food: Food, amount: number) => {
+  // 이미지 분석 결과도 직접 입력 형식으로 처리
+  // AddFoodByImage에서 code, category가 설정되어 넘어옴
   emit('add-food', food, amount)
   // 이미지 모달은 닫지 않음 (여러 음식 추가 가능)
 }
@@ -375,7 +402,7 @@ const handleImageAdd = (food: Food, amount: number) => {
                   v-motion
                   :hovered="{ scale: 1.1 }"
                   :tapped="{ scale: 0.9 }"
-                  @click="toggleFavorite(food.code)"
+                  @click="toggleFavorite(food)"
                   class="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
                 >
                   <Heart

@@ -123,8 +123,8 @@ export interface AiFoodResponse {
 }
 
 export interface FavoriteRequest {
-    foodCode: string
-    userFoodCode?: string
+    foodCode?: string | null
+    userFoodCode?: number | null
 }
 
 export interface FavoriteResponse {
@@ -134,6 +134,12 @@ export interface FavoriteResponse {
     userFoodCode?: string
     createdAt: string
     food?: FoodResponse
+}
+
+export interface FavoriteCodeResponse {
+    favoriteId: number
+    foodCode: string | null
+    userFoodCode: number | null
 }
 
 // ============ Character Types ============

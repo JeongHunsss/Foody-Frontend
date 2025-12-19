@@ -4,6 +4,7 @@ import type {
     AiFoodResponse,
     FavoriteRequest,
     FavoriteResponse,
+    FavoriteCodeResponse,
     PageResponse
 } from './types'
 
@@ -63,12 +64,35 @@ export const foodApi = {
     },
 
     /**
+     * 사용자 정의 음식 목록 조회
+     * (인증 필요)
+     */
+    async getUserFoodList(page: number = 1): Promise<PageResponse<FoodResponse>> {
+        const response = await apiClient.get<PageResponse<FoodResponse>>('/food/auth/user-food', {
+            params: { page }
+        })
+        return response.data
+    },
+
+
+
+    /**
      * 찜 목록 조회
      * (인증 필요)
      */
-    async getFavoriteList(): Promise<FavoriteResponse[]> {
-        const response = await apiClient.get<FavoriteResponse[]>('/food/auth/favorite')
+    async getFavoriteList(page: number = 1, filter?: string): Promise<PageResponse<FavoriteResponse>> {
+        const response = await apiClient.get<PageResponse<FavoriteResponse>>('/food/auth/favorite', {
+            params: { page, filter }
+        })
         return response.data
+    },
+
+    /**
+     * 모든 찜 코드 조회 (isFavorite 체크용)
+     */
+    async getAllFavoriteCodes(): Promise<FavoriteCodeResponse[]> {
+        const { data } = await apiClient.get<FavoriteCodeResponse[]>('/food/auth/favorite/codes')
+        return data
     },
 
     /**

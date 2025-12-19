@@ -52,9 +52,9 @@ const handleAnalyze = async () => {
     // 백엔드 AiFoodResponse -> 프론트 Food 타입으로 매핑
     const mappedFood: Food = {
       // 코드와 카테고리는 AI 분석 결과 특성상 프론트에서 임의로 지정
-      code: `AI-${Date.now()}`,
+      code: `custom-${Date.now()}`,
       name: aiResult.name,
-      category: 'AI분석',
+      category: '직접 입력',
       servingSize: aiResult.standard,
       calories: aiResult.kcal,
       carbs: aiResult.carb,
@@ -76,6 +76,10 @@ const handleAddFood = (food: Food) => {
   emit('add', food, eatenAmount.value)
   // 추가 후 목록에서 제거
   analyzedFoods.value = analyzedFoods.value.filter(f => (f as any).code !== (food as any).code)
+  
+  if (analyzedFoods.value.length === 0) {
+      emit('close')
+  }
 }
 
 const handleReset = () => {
