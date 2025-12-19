@@ -84,7 +84,7 @@ const loadFoods = async (resetPage = false) => {
       totalPages.value = response.totalPages
 
       apiFoods.value = response.content.map((item: any) => ({
-        code: item.code,
+        code: `custom-${item.code}`,
         name: item.name,
         category: '직접 입력',
         servingSize: `${item.standard}`,
@@ -260,14 +260,10 @@ const handleClose = () => {
   emit('close')
 }
 
-const handleManualAdd = async (food: Food, amount: number) => {
-  try {
-  } catch (err) {
-    console.error('Failed to create manual food object:', err)
-  }
-
-  // 직접 입력 음식은 custom-prefix
-  if (!food.code) {
+const handleManualAdd = (food: Food, amount: number) => {
+  // 직접 입력 음식은 임시 코드 할당
+  // 실제 저장은 식단 분석 요청 시 백엔드 ReportService에서 수행됨
+  if (!food.code || !food.code.startsWith('custom-')) {
       food.code = `custom-${Date.now()}`
   }
 
