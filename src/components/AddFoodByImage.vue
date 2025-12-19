@@ -22,6 +22,7 @@ const previewUrl = ref('')
 const isAnalyzing = ref(false)
 const analyzedFoods = ref<Food[]>([])
 const errorMessage = ref('')
+const eatenAmount = ref(100) // 먹은 양 기본값 100
 
 // Computed properties for better performance
 const hasResults = computed(() => analyzedFoods.value.length > 0)
@@ -72,7 +73,7 @@ const handleAnalyze = async () => {
 }
 
 const handleAddFood = (food: Food) => {
-  emit('add', food, 1)
+  emit('add', food, eatenAmount.value)
   // 추가 후 목록에서 제거
   analyzedFoods.value = analyzedFoods.value.filter(f => (f as any).code !== (food as any).code)
 }
@@ -83,6 +84,7 @@ const handleReset = () => {
   analyzedFoods.value = []
   isAnalyzing.value = false
   errorMessage.value = ''
+  eatenAmount.value = 100 // 기본값으로 리셋
 }
 </script>
 
@@ -172,12 +174,9 @@ const handleReset = () => {
                       <h4 class="font-semibold">{{ food.name }}</h4>
                       <p class="text-sm text-gray-500">{{ food.servingSize }}</p>
                     </div>
-                    <button @click="handleAddFood(food)" class="px-4 py-2 bg-emerald-500 text-white rounded-lg">
-                      추가
-                    </button>
                   </div>
 
-                  <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs">
+                  <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-xs mb-4">
                     <div class="bg-emerald-50 rounded-lg p-2 text-center">
                       <div class="text-gray-600 mb-1">칼로리</div>
                       <div class="text-gray-900 font-semibold">{{ food.calories }} kcal</div>
@@ -202,6 +201,29 @@ const handleReset = () => {
                       <div class="text-gray-500 mb-1">나트륨</div>
                       <div class="text-gray-800 font-semibold">{{ food.sodium }} mg</div>
                     </div>
+                  </div>
+
+                  <!-- 먹은 양 입력 필드 추가 -->
+                  <div class="flex items-center gap-3 pt-3 border-t border-gray-200">
+                    <div class="flex-1">
+                      <label class="block text-xs text-gray-500 mb-1">먹은 양</label>
+                      <div class="flex items-center gap-2">
+                        <input
+                          v-model.number="eatenAmount"
+                          type="number"
+                          min="1"
+                          step="1"
+                          class="w-24 px-3 py-2 border border-emerald-200 rounded-lg focus:outline-none focus:border-emerald-500 text-center"
+                        />
+                        <span class="text-sm text-gray-600">g</span>
+                      </div>
+                    </div>
+                    <button 
+                      @click="handleAddFood(food)" 
+                      class="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors mt-5"
+                    >
+                      추가
+                    </button>
                   </div>
                 </div>
 
