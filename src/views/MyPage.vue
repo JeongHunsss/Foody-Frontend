@@ -800,7 +800,7 @@ onMounted(async () => {
                     <div class="text-lg text-gray-400 font-medium">점</div>
                   </div>
                   <span v-if="report.isWaited" class="ml-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold shadow-sm self-center">
-                    분석 대기중
+                    분석 대기 중
                   </span>
                 </div>
                 
