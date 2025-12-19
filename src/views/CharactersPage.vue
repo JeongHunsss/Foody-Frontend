@@ -169,31 +169,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Call to Action -->
-      <div
-        v-motion
-        :initial="{ opacity: 0, y: 40 }"
-        :enter="{ opacity: 1, y: 0, transition: { delay: 1200 } }"
-        class="mt-16 text-center"
-      >
-        <div class="bg-gradient-to-r from-emerald-500 to-green-600 rounded-3xl p-12 shadow-2xl">
-          <h2 class="text-white mb-4">어떤 푸디를 만나볼까요?</h2>
-          <p class="text-white/90 text-lg mb-8 max-w-2xl mx-auto">
-            지금 바로 시작해서 당신만의 푸디를 키워보세요!
-          </p>
-          <RouterLink to="/signup">
-            <button
-              v-motion
-              :hovered="{ scale: 1.05 }"
-              :tapped="{ scale: 0.95 }"
-              class="px-8 py-4 bg-white text-emerald-600 rounded-xl shadow-lg hover:shadow-xl transition-shadow inline-flex items-center gap-2"
-            >
-              <span>지금 시작하기</span>
-              <Sparkles :size="20" />
-            </button>
-          </RouterLink>
-        </div>
-      </div>
     </main>
 
     <!-- Footer -->

@@ -765,9 +765,9 @@ onMounted(async () => {
             v-for="report in currentReports"
             :key="report.id"
             v-motion
-            :hovered="{ scale: 1.02 }"
+            :hovered="{ scale: 1.01 }"
             @click="router.push(`/analyze/result/${report.id}`)"
-            class="border-2 border-gray-200 rounded-2xl p-6 hover:border-emerald-300 transition-all cursor-pointer relative group"
+            class="border-2 border-gray-200 rounded-2xl p-6 hover:border-emerald-400 hover:shadow-lg transition-all cursor-pointer relative group bg-gradient-to-br from-white to-gray-50"
           >
             <!-- 삭제 버튼 -->
             <button
@@ -778,65 +778,66 @@ onMounted(async () => {
               <Trash2 :size="20" />
             </button>
 
-            <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <div class="flex items-center gap-3 mb-3">
-                  <h3 class="text-gray-900">{{ new Date(report.createdAt).toLocaleDateString() }}</h3>
-                  <div class="flex items-center gap-2">
-                    <span v-if="report.isWaited" class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-                      분석 대기중
-                    </span>
-                    <div class="px-4 py-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-full text-sm">
-                      {{ report.score }}점
-                    </div>
-                  </div>
-                </div>
-                <div class="space-y-2">
-                  <div class="flex items-center gap-2 text-sm text-gray-600">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center flex-shrink-0">
-                      <img 
-                        :src="getCharacterById(report.characterId)?.img || ssassakFoody" 
-                        :alt="getCharacterById(report.characterId)?.name || '새싹 푸디'"
-                        class="w-full h-full object-cover"
-                      />
+            <div class="flex items-start justify-between gap-6">
+              <!-- 우측 상단: 날짜 -->
+              <div class="absolute top-6 right-16 text-sm text-gray-500">
+                {{ new Date(report.createdAt).toLocaleDateString() }}
+              </div>
 
-                    </div>
-                    <span>{{ getCharacterById(report.characterId)?.name || '분석 중..' }}</span>
+              <!-- 좌측: 정보 영역 -->
+              <div class="flex-1 space-y-4">
+                <!-- 상단: 캐릭터와 점수 -->
+                <div class="flex items-center gap-4">
+                  <div class="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-100 to-green-100 flex items-center justify-center flex-shrink-0 shadow-md">
+                    <img 
+                      :src="getCharacterById(report.characterId)?.img || ssassakFoody" 
+                      :alt="getCharacterById(report.characterId)?.name || '새싹 푸디'"
+                      class="w-full h-full object-cover"
+                    />
                   </div>
-                  <p class="text-gray-700 bg-emerald-50 rounded-xl p-3 text-sm mb-3">
-                    💬 {{ report.comment }}
-                  </p>
-                  
-                  <!-- 영양소 정보 -->
-                  <div class="grid grid-cols-3 gap-2 text-xs">
-                    <div class="bg-gray-50 p-2 rounded-lg text-center">
-                      <div class="text-gray-500 mb-1">칼로리</div>
-                      <div class="font-semibold text-gray-900">{{ report.totalKcal || 0 }} kcal</div>
-                    </div>
-                    <div class="bg-gray-50 p-2 rounded-lg text-center">
-                      <div class="text-gray-500 mb-1">탄수화물</div>
-                      <div class="font-semibold text-blue-600">{{ report.totalCarb || 0 }} g</div>
-                    </div>
-                    <div class="bg-gray-50 p-2 rounded-lg text-center">
-                      <div class="text-gray-500 mb-1">단백질</div>
-                      <div class="font-semibold text-emerald-600">{{ report.totalProtein || 0 }} g</div>
-                    </div>
-                    <div class="bg-gray-50 p-2 rounded-lg text-center">
-                      <div class="text-gray-500 mb-1">지방</div>
-                      <div class="font-semibold text-yellow-600">{{ report.totalFat || 0 }} g</div>
-                    </div>
-                    <div class="bg-gray-50 p-2 rounded-lg text-center">
-                      <div class="text-gray-500 mb-1">당류</div>
-                      <div class="font-semibold text-pink-600">{{ report.totalSugar || 0 }} g</div>
-                    </div>
-                    <div class="bg-gray-50 p-2 rounded-lg text-center">
-                      <div class="text-gray-500 mb-1">나트륨</div>
-                      <div class="font-semibold text-purple-600">{{ report.totalNatrium || 0 }} mg</div>
-                    </div>
+                  <div class="flex items-baseline gap-2">
+                    <div class="text-5xl font-black text-emerald-600">{{ report.score }}</div>
+                    <div class="text-lg text-gray-400 font-medium">점</div>
+                  </div>
+                  <span v-if="report.isWaited" class="ml-auto px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                    분석 대기중
+                  </span>
+                </div>
+                
+                <!-- 영양소 정보 -->
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="bg-white border border-gray-200 p-3 rounded-xl text-center hover:border-orange-300 transition-colors">
+                    <div class="text-xs text-gray-500 mb-1">칼로리</div>
+                    <div class="text-sm font-bold text-orange-600">{{ report.totalKcal || 0 }}</div>
+                    <div class="text-xs text-gray-400">kcal</div>
+                  </div>
+                  <div class="bg-white border border-gray-200 p-3 rounded-xl text-center hover:border-blue-300 transition-colors">
+                    <div class="text-xs text-gray-500 mb-1">탄수화물</div>
+                    <div class="text-sm font-bold text-blue-600">{{ report.totalCarb || 0 }}</div>
+                    <div class="text-xs text-gray-400">g</div>
+                  </div>
+                  <div class="bg-white border border-gray-200 p-3 rounded-xl text-center hover:border-emerald-300 transition-colors">
+                    <div class="text-xs text-gray-500 mb-1">단백질</div>
+                    <div class="text-sm font-bold text-emerald-600">{{ report.totalProtein || 0 }}</div>
+                    <div class="text-xs text-gray-400">g</div>
+                  </div>
+                  <div class="bg-white border border-gray-200 p-3 rounded-xl text-center hover:border-yellow-300 transition-colors">
+                    <div class="text-xs text-gray-500 mb-1">지방</div>
+                    <div class="text-sm font-bold text-yellow-600">{{ report.totalFat || 0 }}</div>
+                    <div class="text-xs text-gray-400">g</div>
+                  </div>
+                  <div class="bg-white border border-gray-200 p-3 rounded-xl text-center hover:border-pink-300 transition-colors">
+                    <div class="text-xs text-gray-500 mb-1">당류</div>
+                    <div class="text-sm font-bold text-pink-600">{{ report.totalSugar || 0 }}</div>
+                    <div class="text-xs text-gray-400">g</div>
+                  </div>
+                  <div class="bg-white border border-gray-200 p-3 rounded-xl text-center hover:border-purple-300 transition-colors">
+                    <div class="text-xs text-gray-500 mb-1">나트륨</div>
+                    <div class="text-sm font-bold text-purple-600">{{ report.totalNatrium || 0 }}</div>
+                    <div class="text-xs text-gray-400">mg</div>
                   </div>
                 </div>
               </div>
-              <ChevronRight :size="24" class="text-gray-400 flex-shrink-0 ml-4" />
             </div>
           </div>
 
