@@ -204,7 +204,7 @@ const handleSubmit = () => {
                     class="w-full px-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                     required
                   />
-                  <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">g</span>
+                  <span class="absolute right-2 top-1/3 -translate-y-1/3 text-gray-500">g</span>
                 </div>
               </div>
 
