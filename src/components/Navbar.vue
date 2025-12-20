@@ -14,10 +14,14 @@ const isAdmin = computed(() => authStore.isAdmin)
 const userName = computed(() => authStore.user?.name || '마이페이지')
 const isMenuOpen = ref(false)
 
-const handleLogout = () => {
-  if (window.confirm('로그아웃 하시겠습니까?')) {
-    authStore.logout()
-    router.push('/')
+const handleLogout = async () => {
+  if (confirm('로그아웃 하시겠습니까?')) {
+    await authStore.logout()
+    try {
+      await router.push('/')
+    } catch (e) {
+      // Ignore navigation errors (e.g. NavigationDuplicated)
+    }
     isMenuOpen.value = false
   }
 }
