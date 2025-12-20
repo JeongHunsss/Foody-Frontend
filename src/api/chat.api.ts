@@ -29,6 +29,10 @@ export const chatApi = {
     getExpertRooms: async (): Promise<ChatRoomResponse[]> => {
         const { data } = await apiClient.get<ChatRoomResponse[]>('/chat/expert/rooms')
         return data
+    },
+
+    deleteChatRoom: async (roomId: string): Promise<void> => {
+        await apiClient.delete(`/chat/room/${roomId}`)
     }
 }
 

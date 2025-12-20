@@ -787,18 +787,26 @@ onMounted(async () => {
               <!-- 좌측: 정보 영역 -->
               <div class="flex-1 space-y-4">
                 <!-- 상단: 캐릭터와 점수 -->
-                <div class="flex items-center gap-4">
-                  <div class="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-100 to-green-100 flex items-center justify-center flex-shrink-0 shadow-md">
-                    <img 
-                      :src="getCharacterById(report.characterId)?.img || ssassakFoody" 
-                      :alt="getCharacterById(report.characterId)?.name || '새싹 푸디'"
-                      class="w-full h-full object-cover"
-                    />
+                <div class="flex items-center gap-6">
+                  <div class="flex flex-col items-center gap-2">
+                    <div class="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-emerald-100 to-green-100 flex items-center justify-center flex-shrink-0 shadow-md">
+                      <img 
+                        :src="getCharacterById(report.characterId)?.img || ssassakFoody" 
+                        :alt="getCharacterById(report.characterId)?.name || '새싹 푸디'"
+                        class="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span class="text-xs text-gray-600 font-medium">{{ getCharacterById(report.characterId)?.name || '새싹 푸디' }}</span>
                   </div>
-                  <div class="flex items-baseline gap-2">
-                    <div class="text-5xl font-black text-emerald-600">{{ report.score }}</div>
-                    <div class="text-lg text-gray-400 font-medium">점</div>
+                  
+                  <div class="flex flex-col">
+                    <span class="text-sm text-gray-500 font-medium mb-1">나의 식단 점수 :</span>
+                    <div class="flex items-baseline gap-2">
+                      <div class="text-5xl font-black text-emerald-600">{{ report.score }}</div>
+                      <div class="text-lg text-gray-400 font-medium">점</div>
+                    </div>
                   </div>
+
                   <span v-if="report.isWaited" class="ml-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold shadow-sm self-center">
                     분석 대기 중
                   </span>

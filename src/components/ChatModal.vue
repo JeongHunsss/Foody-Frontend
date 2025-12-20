@@ -2,19 +2,19 @@
 import { ref, nextTick, watch, onUnmounted } from 'vue'
 import { Client } from '@stomp/stompjs'
 import { chatApi, type ChatRoom, type ChatMessage } from '@/api/chat.api'
-import { X, Send, FileText } from 'lucide-vue-next'
+import { X, Send } from 'lucide-vue-next'
 import ReportAnalysisPanel from './ReportAnalysisPanel.vue'
 
 const props = defineProps<{
   isOpen: boolean
   reportId?: number
-  userName: string // Current user name
-  userId: string // Current user ID
-  roomId?: string // Optional room ID (for Admin View)
-  partnerName?: string // Name of the chat partner
+  userName: string // 현재 사용자 이름
+  userId: string // 현재 사용자 ID
+  roomId?: string // 선택적 방 ID (관리자 화면용)
+  partnerName?: string // 대화 상대방 이름
 }>()
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'chat-ended'])
 
 const showReportPanel = ref(false)
 
@@ -24,11 +24,26 @@ const room = ref<ChatRoom | null>(null)
 const stompClient = ref<Client | null>(null)
 const messagesContainer = ref<HTMLElement | null>(null)
 
+const handleEndChat = async () => {
+    if (!room.value) return
+    if (confirm('정말로 상담을 종료하시겠습니까? 채팅방이 삭제되며 복구할 수 없습니다.')) {
+        try {
+            await chatApi.deleteChatRoom(room.value.id)
+            alert('상담이 종료되었습니다.')
+            emit('chat-ended')
+            emit('close')
+        } catch (e) {
+            console.error(e)
+            alert('상담 종료에 실패했습니다.')
+        }
+    }
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-// Convert http->ws and append /ws-stomp/websocket for raw WS connection to SockJS endpoint
+// http를 ws로 변환하고 SockJS 엔드포인트를 위한 경로 추가
 const WS_URL = API_BASE_URL.replace(/^http/, 'ws') + '/ws-stomp/websocket'
 
-// Connect to WebSocket
+// 웹소켓 연결
 const connectWebSocket = () => {
   if (!room.value) return
 
@@ -53,14 +68,12 @@ const connectWebSocket = () => {
   stompClient.value = client
 }
 
-// Initialize
+// 초기화
 const initChat = async () => {
   try {
     if (props.roomId) {
-      // Use provided roomId
       room.value = { id: props.roomId } as ChatRoom
     } else if (props.reportId) {
-       // Create or get by reportId
        room.value = await chatApi.createOrGetRoom(props.reportId)
     } else {
         console.error("No roomId or reportId provided")
@@ -91,8 +104,6 @@ const sendMessage = () => {
   })
   
   newMessage.value = ''
-  // Optimization: push locally immediately or wait for server reflection?
-  // Since we subscribe, we'll wait for server.
 }
 
 const scrollToBottom = () => {
@@ -122,9 +133,9 @@ onUnmounted(() => {
   <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
     <div 
         class="bg-white rounded-2xl shadow-2xl flex overflow-hidden transition-all duration-300"
-        :class="showReportPanel ? 'w-[1200px] h-[800px]' : 'w-full max-w-md h-[600px]'"
+        :class="showReportPanel ? 'w-[1200px] h-[800px]' : 'w-full max-w-lg h-[600px]'"
     >
-      <!-- Report Panel (Left Side) -->
+      <!-- 레포트 패널 (왼쪽) -->
       <div v-if="showReportPanel" class="w-[60%] border-r border-gray-200 h-full">
          <ReportAnalysisPanel 
             :report-id="reportId!" 
@@ -133,28 +144,37 @@ onUnmounted(() => {
          />
       </div>
 
-      <!-- Chat Panel (Right Side) -->
+      <!-- 채팅 패널 (오른쪽) -->
       <div class="flex-1 flex flex-col h-full bg-white relative">
-          <!-- Header -->
+          <!-- 헤더 -->
           <div class="p-4 bg-emerald-500 text-white flex justify-between items-center shrink-0">
-            <h3 class="font-bold">1:1 채팅 {{ partnerName ? `with ${partnerName}` : '' }}</h3>
-            <div class="flex items-center gap-2">
+            <h3 class="font-bold text-lg truncate flex-1 min-w-0 mr-4">
+                1:1 상담 ({{ partnerName || '유저' }})
+            </h3>
+            <div class="flex items-center gap-2 shrink-0">
               <button 
                 v-if="reportId"
                 @click="showReportPanel = !showReportPanel" 
-                class="hover:bg-white/20 p-1 rounded transition-colors"
-                :title="showReportPanel ? '레포트 닫기' : '레포트 보기'"
-                :class="{ 'bg-white/20': showReportPanel }"
+                class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-medium border border-white/30 whitespace-nowrap mr-2"
+                :title="showReportPanel ? '레포트 닫기' : '레포트 상세보기'"
+                :class="{ 'bg-white/40 shadow-inner': showReportPanel }"
               >
-                <FileText :size="20" />
+                {{ showReportPanel ? '레포트 닫기' : '레포트 상세보기' }}
               </button>
-              <button @click="$emit('close')" class="hover:bg-white/20 p-1 rounded transition-colors">
+              <button 
+                @click="handleEndChat" 
+                class="bg-red-500/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors text-sm font-bold shadow-sm whitespace-nowrap"
+                title="상담 종료 (삭제)"
+              >
+                채팅 종료
+              </button>
+              <button @click="$emit('close')" class="hover:bg-white/20 p-1.5 rounded transition-colors ml-1">
                 <X :size="20" />
               </button>
             </div>
           </div>
           
-          <!-- Messages -->
+          <!-- 메시지 목록 -->
           <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
             <div v-for="msg in messages" :key="msg.id" 
                  :class="['flex', msg.senderId === userId ? 'justify-end' : 'justify-start']">
@@ -168,7 +188,7 @@ onUnmounted(() => {
             </div>
           </div>
           
-          <!-- Input -->
+          <!-- 입력 영역 -->
           <div class="p-4 bg-white border-t border-gray-200 flex gap-2 shrink-0">
             <input 
               v-model="newMessage" 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { Save, X } from 'lucide-vue-next'
 import { reportApi } from '@/api/report.api'
 import { adminApi } from '@/api/admin.api'
@@ -20,6 +20,19 @@ const isLoading = ref(false)
 const reportScore = ref<number | ''>('')
 const reportCharacterId = ref<number | null>(null)
 const reportComment = ref('')
+
+const nutrientGauges = computed(() => {
+    const d = reportDetail.value
+    if (!d) return []
+    return [
+        { label: '칼로리', value: d.totalKcal, standard: d.userStdKcal, color: 'bg-emerald-500' },
+        { label: '탄수화물', value: d.totalCarb, standard: d.userStdCarb, color: 'bg-blue-500' },
+        { label: '단백질', value: d.totalProtein, standard: d.userStdProtein, color: 'bg-indigo-500' },
+        { label: '지방', value: d.totalFat, standard: d.userStdFat, color: 'bg-yellow-500' },
+        { label: '당류', value: d.totalSugar, standard: d.userStdSugar, color: 'bg-orange-500' },
+        { label: '나트륨', value: d.totalNatrium, standard: d.userStdNatrium, color: 'bg-red-500' },
+    ]
+})
 
 const loadData = async () => {
   if (!props.reportId) return
@@ -114,22 +127,15 @@ watch(() => props.reportId, () => {
             <div>
                <h3 class="font-bold text-gray-800 mb-4">영양 섭취 분석</h3>
                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div v-for="(val, label) in {
-                       '칼로리': [reportDetail.totalKcal, reportDetail.userStdKcal, 'bg-emerald-500'],
-                       '탄수화물': [reportDetail.totalCarb, reportDetail.userStdCarb, 'bg-blue-500'],
-                       '단백질': [reportDetail.totalProtein, reportDetail.userStdProtein, 'bg-indigo-500'],
-                       '지방': [reportDetail.totalFat, reportDetail.userStdFat, 'bg-yellow-500'],
-                       '당류': [reportDetail.totalSugar, reportDetail.userStdSugar, 'bg-orange-500'],
-                       '나트륨': [reportDetail.totalNatrium, reportDetail.userStdNatrium, 'bg-red-500']
-                   }" :key="label" class="space-y-2">
+                   <div v-for="gauge in nutrientGauges" :key="gauge.label" class="space-y-2">
                        <div class="flex justify-between text-sm">
-                           <span class="font-medium text-gray-700">{{ label }}</span>
-                           <span class="text-gray-500">{{ val[0]?.toFixed(1) }} / {{ val[1]?.toFixed(1) }}</span>
+                           <span class="font-medium text-gray-700">{{ gauge.label }}</span>
+                           <span class="text-gray-500">{{ gauge.value?.toFixed(1) }} / {{ gauge.standard?.toFixed(1) }}</span>
                        </div>
                        <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
                            <div class="h-full rounded-full transition-all duration-500" 
-                                :class="val[2]" 
-                                :style="{ width: Math.min(((val[0] as number) / (val[1] as number)) * 100, 100) + '%' }">
+                                :class="gauge.color" 
+                                :style="{ width: Math.min((gauge.value / gauge.standard) * 100, 100) + '%' }">
                            </div>
                        </div>
                    </div>

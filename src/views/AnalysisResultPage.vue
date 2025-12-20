@@ -275,7 +275,7 @@ const getScoreGradient = (score: number) => {
             </div>
             <div>
               <h3 class="text-blue-900 font-bold">전문가 분석 완료</h3>
-              <p class="text-blue-700 text-sm">전문가에 의해 분석된 레포트입니다. 문의를 원하시면 1대1 채팅을 진행해주세요.</p>
+              <p class="text-blue-700 text-sm">전문가에 의해 분석된 레포트입니다. 문의를 원하시면 1대1 상담을 진행해주세요.</p>
             </div>
           </div>
           <button
@@ -283,7 +283,7 @@ const getScoreGradient = (score: number) => {
              class="flex-shrink-0 flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
           >
             <MessageCircle :size="20" />
-            <span class="font-bold">전문가와 채팅</span>
+            <span class="font-bold">전문가와 상담</span>
           </button>
         </div>
       </div>
