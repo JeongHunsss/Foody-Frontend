@@ -309,7 +309,7 @@ const closeChat = () => {
           ]"
         >
           <MessageCircle :size="20" class="inline-block mr-1 md:mr-2" />
-          1:1 채팅
+          1:1 상담
         </button>
       </div>
 
@@ -717,7 +717,7 @@ const closeChat = () => {
       >
         <h2 class="text-gray-900 mb-6 flex items-center gap-2">
             <MessageCircle :size="24" class="text-emerald-600" />
-            1:1 상담 채팅 목록
+            1:1 상담 목록
         </h2>
 
         <div v-if="chatRooms.length === 0" class="text-center py-12 text-gray-500">
@@ -741,7 +741,7 @@ const closeChat = () => {
                     </div>
                 </div>
                 <div class="flex items-center gap-2 text-emerald-600">
-                    <span class="text-sm font-medium">채팅하기</span>
+                    <span class="text-sm font-medium">상담하기</span>
                     <MessageCircle :size="16" />
                 </div>
             </div>
@@ -757,7 +757,7 @@ const closeChat = () => {
         :user-name="authStore.user?.name || 'Admin'"
         :user-id="authStore.user?.id || ''"
         @close="closeChat"
-
+        @chat-ended="loadChatRooms"
       />
 
     </div>
