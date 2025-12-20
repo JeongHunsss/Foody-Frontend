@@ -234,6 +234,8 @@ export interface ReportResponse {
     comment: string
     characterId: number
     isWaited: boolean
+    expertId?: string
+    expertName?: string
 
     // Daily totals
     totalKcal: number

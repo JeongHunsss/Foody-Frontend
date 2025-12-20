@@ -2,24 +2,23 @@
 import { ref, onMounted } from 'vue'
 import { 
   Shield, Users, Apple, Activity, FileText,
-  Save, X, Plus, Trash2, Edit2, ChevronDown, ChevronUp, Search, Check
+  Save, X, Plus, Trash2, Edit2, ChevronDown, ChevronUp, Search, Check, MessageCircle
 } from 'lucide-vue-next'
 import Navbar from '@/components/Navbar.vue'
 import { adminApi } from '@/api/admin.api'
 import { foodApi } from '@/api/food.api'
-import { reportApi } from '@/api/report.api'
-import { characterApi } from '@/api/character.api'
+import { chatApi, type ChatRoomResponse } from '@/api/chat.api'
 import type { 
   FoodRequest, 
   ActivityLevelResponse, 
-  WaitingReportResponse,
-  ReportResponse,
-  CharacterResponse
+  WaitingReportResponse
 } from '@/api/types'
 import FoodSearchModal from '@/components/FoodSearchModal.vue'
+import ChatModal from '@/components/ChatModal.vue'
+import { useAuthStore } from '@/stores/auth'
 
 // 권한 관리
-const activeTab = ref<'role' | 'food' | 'activity' | 'report'>('report') // 기본 탭: 레포트
+const activeTab = ref<'role' | 'food' | 'activity' | 'report' | 'chat'>('report') // 기본 탭: 레포트
 const targetUserId = ref('')
 const targetRole = ref<'ROLE_USER' | 'ROLE_ADMIN'>('ROLE_USER')
 const isUpdatingRole = ref(false)
@@ -49,16 +48,12 @@ const categories = ref<string[]>([])
 const activityLevels = ref<ActivityLevelResponse[]>([])
 const editingLevel = ref<ActivityLevelResponse | null>(null)
 
+import ReportAnalysisPanel from '@/components/ReportAnalysisPanel.vue'
+
 // 레포트 관리
 const waitingReports = ref<WaitingReportResponse[]>([]) // 대기 목록
 const selectedReportId = ref<number | null>(null)
-const reportDetail = ref<ReportResponse | null>(null) // 상세 정보
-const characters = ref<CharacterResponse[]>([]) // 캐릭터 목록
-const isLoadingDetail = ref(false)
 
-const reportScore = ref<number | ''>('')
-const reportCharacterId = ref<number | null>(null)
-const reportComment = ref('')
 
 // 데이터 로드 함수들
 const loadActivityLevels = async () => {
@@ -77,13 +72,17 @@ const loadWaitingReports = async () => {
   }
 }
 
-const loadCharacters = async () => {
-  if (characters.value.length > 0) return
-  try {
-    characters.value = await characterApi.getAllCharacters()
-  } catch (error) {
-    console.error('캐릭터 로드 실패:', error)
-  }
+
+const authStore = useAuthStore()
+const chatRooms = ref<ChatRoomResponse[]>([])
+const isChatModalOpen = ref(false)
+
+const loadChatRooms = async () => {
+    try {
+        chatRooms.value = await chatApi.getExpertRooms()
+    } catch (error) {
+        console.error('채팅 목록 로드 실패:', error)
+    }
 }
 
 onMounted(async () => {
@@ -96,6 +95,7 @@ onMounted(async () => {
     categories.value = cats
     activityLevels.value = levels
     waitingReports.value = reports
+    await loadChatRooms()
   } catch (error) {
     console.error('데이터 로드 실패:', error)
   }
@@ -201,78 +201,27 @@ const handleUpdateActivityLevel = async () => {
 }
 
 // 레포트 상세 보기 및 작성 모드 진입
-const handleSelectReport = async (reportId: number) => {
+const handleSelectReport = (reportId: number) => {
   selectedReportId.value = reportId
-  isLoadingDetail.value = true
-  
-  try {
-    // 상세 정보 및 캐릭터 목록 로드
-    const [detail] = await Promise.all([
-      reportApi.getReportDetail(reportId),
-      loadCharacters()
-    ])
-    reportDetail.value = detail
-    
-    // 초기화
-    reportScore.value = ''
-    reportCharacterId.value = null
-    reportComment.value = ''
-    
-  } catch (error) {
-    console.error('레포트 상세 로드 실패:', error)
-    alert('레포트 상세 정보를 불러오는데 실패했습니다.')
-    selectedReportId.value = null
-  } finally {
-    isLoadingDetail.value = false
-  }
 }
 
-// 레포트 작성 제출
-const handleSubmitReport = async () => {
-  if (!selectedReportId.value) return
-  
-  if (reportScore.value === '' || !reportCharacterId.value || !reportComment.value) {
-    alert('점수, 캐릭터, 코멘트를 모두 입력해주세요.')
-    return
-  }
 
-  try {
-    await adminApi.updateWaitingReport({
-      id: selectedReportId.value,
-      score: Number(reportScore.value),
-      characterId: reportCharacterId.value,
-      comment: reportComment.value
-    })
-
-    alert('레포트 분석이 완료되었습니다.')
-    
-    // 목록 갱신 및 초기화
-    await loadWaitingReports()
-    selectedReportId.value = null
-    reportDetail.value = null
-    
-  } catch (error: any) {
-    console.error('레포트 작성 실패:', error)
-    let errorMessage = 
-      error.response?.data?.message || 
-      error.response?.data || 
-      error.message ||
-      '알 수 없는 오류가 발생했습니다'
-
-    if (typeof errorMessage === 'object') {
-      // 객체인 경우 (Validation 에러 등) 보기 좋게 변환
-      errorMessage = Object.entries(errorMessage)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('\n')
-    }
-
-    alert(`레포트 작성 실패:\n${errorMessage}`)
-  }
-}
 
 const closeReportDetail = () => {
   selectedReportId.value = null
-  reportDetail.value = null
+}
+
+const selectedChatRoom = ref<ChatRoomResponse | undefined>(undefined)
+
+const openChat = (room: ChatRoomResponse) => {
+    selectedChatRoom.value = room
+    isChatModalOpen.value = true
+}
+
+const closeChat = () => {
+    selectedChatRoom.value = undefined
+    isChatModalOpen.value = false
+    loadChatRooms() // 대화 후 목록 갱신 (선택 사항)
 }
 </script>
 
@@ -349,6 +298,18 @@ const closeReportDetail = () => {
         >
           <Activity :size="20" class="inline-block mr-1 md:mr-2" />
           활동 레벨
+        </button>
+        <button
+          @click="activeTab = 'chat'"
+          :class="[
+            'py-3 px-4 rounded-xl transition-all text-sm md:text-base',
+            activeTab === 'chat'
+              ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white'
+              : 'text-gray-700 hover:bg-gray-100'
+          ]"
+        >
+          <MessageCircle :size="20" class="inline-block mr-1 md:mr-2" />
+          1:1 채팅
         </button>
       </div>
 
@@ -737,256 +698,68 @@ const closeReportDetail = () => {
         </div>
 
         <!-- 레포트 작성 폼 (상세) -->
-        <div v-if="selectedReportId" class="bg-white rounded-3xl shadow-lg p-8 border-2 border-blue-100">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-gray-900 flex items-center gap-2">
-              <Edit2 :size="24" class="text-blue-600" />
-              레포트 상세 분석
-            </h2>
-            <button
-              @click="closeReportDetail"
-              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X :size="20" />
-            </button>
-          </div>
-
-          <div v-if="isLoadingDetail" class="text-center py-12">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p class="text-gray-500">상세 정보를 불러오는 중...</p>
-          </div>
-
-          <div v-else-if="reportDetail" class="space-y-8">
-            <!-- 유저 정보 -->
-            <div class="bg-gray-50 p-6 rounded-2xl">
-               <div class="flex justify-between items-center mb-4">
-                 <h3 class="font-bold text-gray-800">사용자 정보</h3>
-                 <span 
-                   v-if="reportDetail.userIsDiabetes"
-                   class="px-3 py-1 bg-red-100 text-red-600 rounded-full text-sm font-bold"
-                 >
-                   당뇨 환자
-                 </span>
-               </div>
-               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                 <div>
-                   <span class="text-gray-500">성별:</span> 
-                   {{ reportDetail.userGender === 'M' ? '남성' : '여성' }}
-                 </div>
-                 <div>
-                   <span class="text-gray-500">나이:</span> {{ reportDetail.userAge }}세
-                 </div>
-                 <div>
-                   <span class="text-gray-500">키/몸무게:</span> 
-                   {{ reportDetail.userHeight }}cm / {{ reportDetail.userWeight }}kg
-                 </div>
-                 <div>
-                   <span class="text-gray-500">활동레벨:</span> {{ reportDetail.userActivityLevel }}
-                 </div>
-               </div>
-            </div>
-
-            <!-- 영양 섭취 분석 (게이지 바) -->
-            <div>
-               <h3 class="font-bold text-gray-800 mb-4">영양 섭취 분석 (섭취량 / 권장량)</h3>
-               <div class="grid md:grid-cols-2 gap-6">
-                 <!-- 칼로리 -->
-                 <div class="space-y-2">
-                   <div class="flex justify-between text-sm">
-                     <span class="font-medium text-gray-700">칼로리</span>
-                     <span class="text-gray-500">
-                       {{ reportDetail.totalKcal?.toFixed(0) }} / {{ reportDetail.userStdKcal?.toFixed(0) }} kcal
-                     </span>
-                   </div>
-                   <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
-                     <div 
-                       class="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                       :style="{ width: Math.min((reportDetail.totalKcal / reportDetail.userStdKcal) * 100, 100) + '%' }"
-                     ></div>
-                   </div>
-                 </div>
-
-                 <!-- 탄수화물 -->
-                 <div class="space-y-2">
-                   <div class="flex justify-between text-sm">
-                     <span class="font-medium text-gray-700">탄수화물</span>
-                     <span class="text-gray-500">
-                       {{ reportDetail.totalCarb?.toFixed(1) }} / {{ reportDetail.userStdCarb?.toFixed(1) }} g
-                     </span>
-                   </div>
-                   <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
-                     <div 
-                       class="h-full bg-blue-500 rounded-full transition-all duration-500"
-                       :style="{ width: Math.min((reportDetail.totalCarb / reportDetail.userStdCarb) * 100, 100) + '%' }"
-                     ></div>
-                   </div>
-                 </div>
-
-                 <!-- 단백질 -->
-                 <div class="space-y-2">
-                   <div class="flex justify-between text-sm">
-                     <span class="font-medium text-gray-700">단백질</span>
-                     <span class="text-gray-500">
-                       {{ reportDetail.totalProtein?.toFixed(1) }} / {{ reportDetail.userStdProtein?.toFixed(1) }} g
-                     </span>
-                   </div>
-                   <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
-                     <div 
-                       class="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                       :style="{ width: Math.min((reportDetail.totalProtein / reportDetail.userStdProtein) * 100, 100) + '%' }"
-                     ></div>
-                   </div>
-                 </div>
-
-                 <!-- 지방 -->
-                 <div class="space-y-2">
-                   <div class="flex justify-between text-sm">
-                     <span class="font-medium text-gray-700">지방</span>
-                     <span class="text-gray-500">
-                       {{ reportDetail.totalFat?.toFixed(1) }} / {{ reportDetail.userStdFat?.toFixed(1) }} g
-                     </span>
-                   </div>
-                   <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
-                     <div 
-                       class="h-full bg-yellow-500 rounded-full transition-all duration-500"
-                       :style="{ width: Math.min((reportDetail.totalFat / reportDetail.userStdFat) * 100, 100) + '%' }"
-                     ></div>
-                   </div>
-                 </div>
-
-                 <!-- 당류 -->
-                 <div class="space-y-2">
-                   <div class="flex justify-between text-sm">
-                     <span class="font-medium text-gray-700">당류</span>
-                     <span class="text-gray-500">
-                       {{ reportDetail.totalSugar?.toFixed(1) }} / {{ reportDetail.userStdSugar?.toFixed(1) }} g
-                     </span>
-                   </div>
-                   <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
-                     <div 
-                       class="h-full bg-orange-500 rounded-full transition-all duration-500"
-                       :style="{ width: Math.min((reportDetail.totalSugar / reportDetail.userStdSugar) * 100, 100) + '%' }"
-                     ></div>
-                   </div>
-                 </div>
-
-                 <!-- 나트륨 -->
-                 <div class="space-y-2">
-                   <div class="flex justify-between text-sm">
-                     <span class="font-medium text-gray-700">나트륨</span>
-                     <span class="text-gray-500">
-                       {{ reportDetail.totalNatrium?.toFixed(1) }} / {{ reportDetail.userStdNatrium?.toFixed(1) }} g
-                     </span>
-                   </div>
-                   <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
-                     <div 
-                       class="h-full bg-red-500 rounded-full transition-all duration-500"
-                       :style="{ width: Math.min((reportDetail.totalNatrium / reportDetail.userStdNatrium) * 100, 100) + '%' }"
-                     ></div>
-                   </div>
-                 </div>
-               </div>
-            </div>
-
-            <!-- 식단 요약 -->
-            <div>
-               <h3 class="font-bold text-gray-800 mb-4">식단 요약</h3>
-               <div class="space-y-4">
-                 <div v-for="meal in reportDetail.meals" :key="meal.id" class="border rounded-xl p-4">
-                   <div class="flex justify-between items-center mb-2">
-                     <span class="font-bold text-emerald-700">
-                       {{ 
-                         meal.mealType === 'BREAKFAST' ? '아침' : 
-                         meal.mealType === 'LUNCH' ? '점심' : 
-                         meal.mealType === 'DINNER' ? '저녁' : '간식' 
-                       }}
-                     </span>
-                     <div class="text-sm text-gray-500 flex flex-wrap gap-2">
-                       <span>{{ meal.totalKcal?.toFixed(0) }} kcal</span>
-                       <span class="text-gray-300">|</span>
-                       <span>탄: {{ meal.totalCarb?.toFixed(1) }}g</span>
-                       <span class="text-gray-300">|</span>
-                       <span>단: {{ meal.totalProtein?.toFixed(1) }}g</span>
-                       <span class="text-gray-300">|</span>
-                       <span>지: {{ meal.totalFat?.toFixed(1) }}g</span>
-                       <span class="text-gray-300">|</span>
-                       <span>당: {{ meal.totalSugar?.toFixed(1) }}g</span>
-                       <span class="text-gray-300">|</span>
-                       <span>나: {{ meal.totalNatrium?.toFixed(1) }}g</span>
-                     </div>
-                   </div>
-                   <div class="flex flex-wrap gap-2">
-                     <span 
-                       v-for="food in meal.mealFoods" 
-                       :key="food.id"
-                       class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700"
-                     >
-                       {{ food.foodName || food.userFoodName }} ({{ food.eatenWeight }}g)
-                     </span>
-                   </div>
-                 </div>
-               </div>
-            </div>
-
-            <hr class="border-gray-200" />
-
-            <!-- 분석 입력 폼 -->
-            <div class="space-y-6">
-              <h3 class="font-bold text-gray-800">분석 내용 작성</h3>
-              
-              <div>
-                <label class="block text-sm text-gray-700 mb-2">점수 (0-100)</label>
-                <input
-                  v-model.number="reportScore"
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="점수를 입력하세요"
-                  class="w-32 px-4 py-3 border-2 border-blue-100 rounded-xl focus:outline-none focus:border-blue-400"
-                />
-              </div>
-
-              <div>
-                <label class="block text-sm text-gray-700 mb-2">캐릭터 선택</label>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div
-                    v-for="char in characters"
-                    :key="char.id"
-                    @click="reportCharacterId = char.id"
-                    :class="[
-                      'p-2 rounded-xl border-2 cursor-pointer transition-all text-center',
-                      reportCharacterId === char.id
-                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
-                        : 'border-gray-200 hover:border-blue-300'
-                    ]"
-                  >
-                    <img :src="char.img" alt="Character" class="w-full h-24 object-contain mb-2" />
-                    <p class="text-xs font-medium">{{ char.name }}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label class="block text-sm text-gray-700 mb-2">전문가 코멘트</label>
-                <textarea
-                  v-model="reportComment"
-                  placeholder="상세한 피드백을 작성하세요..."
-                  rows="6"
-                  class="w-full px-4 py-3 border-2 border-blue-100 rounded-xl focus:outline-none focus:border-blue-400 resize-none"
-                ></textarea>
-              </div>
-
-              <button
-                @click="handleSubmitReport"
-                class="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 font-bold text-lg"
-              >
-                <Save :size="24" />
-                분석 완료 및 전송
-              </button>
-            </div>
-          </div>
+        <div v-if="selectedReportId" class="bg-white rounded-3xl shadow-lg border-2 border-blue-100 h-[800px] overflow-hidden">
+             <ReportAnalysisPanel
+                :report-id="selectedReportId"
+                @close="closeReportDetail"
+                @submitted="() => { loadWaitingReports(); closeReportDetail(); }"
+             />
         </div>
       </div>
+
+      <!-- 채팅 관리 탭 -->
+      <div
+        v-if="activeTab === 'chat'"
+        v-motion
+        :initial="{ opacity: 0, x: -20 }"
+        :enter="{ opacity: 1, x: 0 }"
+        class="bg-white rounded-3xl shadow-lg p-8 border-2 border-emerald-100"
+      >
+        <h2 class="text-gray-900 mb-6 flex items-center gap-2">
+            <MessageCircle :size="24" class="text-emerald-600" />
+            1:1 상담 채팅 목록
+        </h2>
+
+        <div v-if="chatRooms.length === 0" class="text-center py-12 text-gray-500">
+            진행 중인 상담이 없습니다.
+        </div>
+
+        <div v-else class="space-y-4">
+            <div
+                v-for="room in chatRooms"
+                :key="room.id"
+                class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 transition-colors cursor-pointer"
+                @click="openChat(room)"
+            >
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
+                        {{ room.userName.charAt(0) }}
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800">{{ room.userName }} ({{ room.userId }})</p>
+                        <p class="text-sm text-gray-500">{{ new Date(room.createdAt).toLocaleString() }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-emerald-600">
+                    <span class="text-sm font-medium">채팅하기</span>
+                    <MessageCircle :size="16" />
+                </div>
+            </div>
+        </div>
+      </div>
+      
+      <!-- 채팅 모달 -->
+      <ChatModal
+        :is-open="isChatModalOpen"
+        :room-id="selectedChatRoom?.id"
+        :report-id="selectedChatRoom?.reportId"
+        :partner-name="selectedChatRoom?.userName"
+        :user-name="authStore.user?.name || 'Admin'"
+        :user-id="authStore.user?.id || ''"
+        @close="closeChat"
+
+      />
+
     </div>
   </div>
 </template>

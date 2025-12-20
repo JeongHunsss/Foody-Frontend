@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, Ruler, Weight, Activity, Calendar, TrendingUp, Apple, Trash2, List } from 'lucide-vue-next'
+import { User, Ruler, Weight, Activity, Calendar, TrendingUp, Apple, Trash2, List, MessageCircle } from 'lucide-vue-next'
+import ChatModal from '@/components/ChatModal.vue'
 import Navbar from '@/components/Navbar.vue'
 import NutritionGauge from '@/components/NutritionGauge.vue'
 import { reportApi } from '@/api/report.api'
@@ -20,6 +21,7 @@ const reportData = ref<ReportResponse | null>(null)
 const userName = ref('')
 const characterData = ref<CharacterResponse | null>(null)
 const allCharacters = ref<CharacterResponse[]>([])
+const isChatOpen = ref(false)
 
 // Fetch report data
 onMounted(async () => {
@@ -85,7 +87,10 @@ const analysisResult = computed(() => {
   }
   
   return {
+    id: report.id, // Need ID for something?
     userId: report.userId,
+    expertId: report.expertId, // Add expertId
+    expertName: report.expertName,
     userName: userName.value,
     userInfo: {
       name: userName.value,
@@ -230,6 +235,7 @@ const getScoreGradient = (score: number) => {
               <List :size="20" />
               <span class="text-sm">레포트 목록</span>
             </button>
+
             <button
               @click="handleDeleteReport"
               class="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
@@ -254,6 +260,31 @@ const getScoreGradient = (score: number) => {
             <h3 class="text-amber-900 font-bold">전문가 분석 대기 중</h3>
             <p class="text-amber-700 text-sm">영양 전문가가 회원님의 식단 기록을 분석하고 있습니다. 분석이 완료되면 코멘트와 점수가 업데이트됩니다.</p>
           </div>
+        </div>
+      </div>
+
+      <!-- 전문가 분석 완료 알림 배너 -->
+      <div 
+        v-if="analysisResult?.expertId && !analysisResult?.isWaited"
+        class="bg-blue-50 border-y border-blue-200"
+      >
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="bg-blue-100 p-2 rounded-full flex-shrink-0">
+              <span class="text-2xl">👨‍⚕️</span>
+            </div>
+            <div>
+              <h3 class="text-blue-900 font-bold">전문가 분석 완료</h3>
+              <p class="text-blue-700 text-sm">전문가에 의해 분석된 레포트입니다. 문의를 원하시면 1대1 채팅을 진행해주세요.</p>
+            </div>
+          </div>
+          <button
+             @click="isChatOpen = true"
+             class="flex-shrink-0 flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <MessageCircle :size="20" />
+            <span class="font-bold">전문가와 채팅</span>
+          </button>
         </div>
       </div>
 
@@ -555,5 +586,13 @@ const getScoreGradient = (score: number) => {
       </div>
     </div>
     </div>
+    <ChatModal 
+      :is-open="isChatOpen"
+      :report-id="analysisResult?.id"
+      :user-name="userName"
+      :partner-name="analysisResult?.expertName"
+      :user-id="analysisResult?.userId || ''"
+      @close="isChatOpen = false"
+    />
   </div>
 </template>
