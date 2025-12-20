@@ -250,7 +250,7 @@ const currentFoodyImage = computed(() =>
         <div class="flex flex-col md:flex-row justify-between items-center gap-4">
           <div class="flex items-center gap-3">
             <img :src="logoImage" alt="Foody Logo" class="h-10 object-contain" />
-            <span class="text-sm text-gray-500">© 2024 Foody. All rights reserved.</span>
+            <span class="text-sm text-gray-500">© 2025 SSAFY-Foody. All rights reserved.</span>
           </div>
           <div class="flex gap-6 text-sm text-gray-600">
             <a href="#" class="hover:text-emerald-600 transition-colors">개인정보처리방침</a>
