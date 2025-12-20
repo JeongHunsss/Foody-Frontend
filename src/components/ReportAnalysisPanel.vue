@@ -83,7 +83,24 @@ const handleSubmitReport = async () => {
         emit('submitted')
     } catch (error: any) {
         console.error('Analysis submission failed:', error)
-        alert('분석 제출 실패: ' + (error.response?.data?.message || error.message))
+        let msg = error.message
+
+        if (error.response?.data) {
+            if (typeof error.response.data === 'string') {
+                msg = error.response.data
+            } else if (typeof error.response.data === 'object') {
+                // Validation error map 처리 (Map<String, String>)
+                // 혹은 일반 에러 객체 (message 필드 포함)
+                if ('message' in error.response.data) {
+                    msg = error.response.data.message
+                } else {
+                    // Map의 값들만 추출하여 줄바꿈으로 연결
+                    msg = Object.values(error.response.data).join('\n')
+                }
+            }
+        }
+        
+        alert('분석 제출 실패:\n' + msg)
     }
 }
 
