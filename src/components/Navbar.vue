@@ -92,6 +92,17 @@ const navigateTo = (path: string) => {
             좋아하는 음식
           </button>
           <button
+            @click="navigateTo('/meal-community')"
+            :class="[
+              'px-4 py-2 rounded-xl transition-all',
+              isActive('/meal-community') 
+                ? 'bg-emerald-100 text-emerald-700' 
+                : 'text-gray-700 hover:bg-gray-100'
+            ]"
+          >
+            식단 커뮤니티
+          </button>
+          <button
             @click="navigateTo('/characters')"
             :class="[
               'px-4 py-2 rounded-xl transition-all',
@@ -206,6 +217,17 @@ const navigateTo = (path: string) => {
           ]"
         >
           좋아하는 음식
+        </button>
+        <button
+          @click="navigateTo('/meal-community')"
+          :class="[
+            'w-full text-left px-4 py-3 rounded-xl transition-all',
+            isActive('/meal-community') 
+              ? 'bg-emerald-50 text-emerald-700 font-medium' 
+              : 'text-gray-700 hover:bg-gray-50'
+          ]"
+        >
+          식단 커뮤니티
         </button>
         <button
           @click="navigateTo('/characters')"

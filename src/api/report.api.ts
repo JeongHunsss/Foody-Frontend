@@ -3,7 +3,8 @@ import type {
     ReportRequest,
     ReportListResponse,
     ReportResponse,
-    PageResponse
+    PageResponse,
+    ReportComment
 } from './types'
 
 /**
@@ -49,8 +50,53 @@ export const reportApi = {
     /**
      * 레포트 삭제
      */
+    /**
+     * 레포트 삭제
+     */
     async deleteReport(reportId: number): Promise<string> {
         const response = await apiClient.delete<string>(`/report/${reportId}`)
+        return response.data
+    },
+
+    /**
+     * 공유 상태 변경
+     */
+    async toggleShare(reportId: number): Promise<string> {
+        const response = await apiClient.patch<string>(`/report/${reportId}/share`)
+        return response.data
+    },
+
+    /**
+     * 공유된 레포트 목록 조회
+     */
+    async getSharedReportList(page: number = 1): Promise<PageResponse<ReportResponse>> {
+        const response = await apiClient.get<PageResponse<ReportResponse>>('/report/shared', {
+            params: { page }
+        })
+        return response.data
+    },
+
+    /**
+     * 댓글 등록
+     */
+    async addComment(data: { reportId: number, comment: string }): Promise<string> {
+        const response = await apiClient.post<string>('/report/comment', data)
+        return response.data
+    },
+
+    /**
+     * 댓글 조회
+     */
+    async getComments(reportId: number): Promise<ReportComment[]> {
+        const response = await apiClient.get<ReportComment[]>(`/report/${reportId}/comment`)
+        return response.data
+    },
+
+    /**
+     * 댓글 삭제
+     */
+    async deleteComment(commentId: number): Promise<string> {
+        const response = await apiClient.delete<string>(`/report/comment/${commentId}`)
         return response.data
     }
 }

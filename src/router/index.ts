@@ -50,6 +50,11 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/meal-community',
+            name: 'community',
+            component: () => import('@/views/MealCommunityPage.vue')
+        },
+        {
             path: '/favorites',
             name: 'favorites',
             component: () => import('@/views/FavoritesPage.vue'),

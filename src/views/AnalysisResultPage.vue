@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { User, Ruler, Weight, Activity, Calendar, TrendingUp, Apple, Trash2, List, MessageCircle } from 'lucide-vue-next'
+import { User, Ruler, Weight, Activity, Calendar, TrendingUp, Apple, Trash2, List, MessageCircle, Share2, MessageSquare } from 'lucide-vue-next'
 import ChatModal from '@/components/ChatModal.vue'
 import Navbar from '@/components/Navbar.vue'
 import NutritionGauge from '@/components/NutritionGauge.vue'
+import CommentList from '@/components/CommentList.vue'
 import { reportApi } from '@/api/report.api'
 import { userApi } from '@/api/user.api'
 import { characterApi } from '@/api/character.api'
@@ -22,6 +23,11 @@ const userName = ref('')
 const characterData = ref<CharacterResponse | null>(null)
 const allCharacters = ref<CharacterResponse[]>([])
 const isChatOpen = ref(false)
+const isShared = ref(false)
+const currentUserId = ref('')
+const currentUserRole = ref('')
+const isOwner = computed(() => reportData.value?.userId === currentUserId.value)
+const isAdmin = computed(() => currentUserRole.value === 'ROLE_ADMIN')
 
 // Fetch report data
 onMounted(async () => {
@@ -61,6 +67,10 @@ onMounted(async () => {
         c => c.id === reportData.value!.characterId
       ) || null
     }
+
+    isShared.value = reportData.value?.isShared || false
+    currentUserId.value = user.id
+    currentUserRole.value = user.role
     
   } catch (error: any) {
     console.error('Failed to load report:', error)
@@ -70,6 +80,62 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+const handleToggleShare = async () => {
+  if (!reportData.value) return
+  
+  try {
+    await reportApi.toggleShare(reportData.value.id)
+    isShared.value = !isShared.value
+  } catch (error) {
+    alert(showError(error))
+  }
+}
+
+// Helpers
+const mealTimeNames: Record<string, string> = {
+  breakfast: '아침',
+  lunch: '점심',
+  dinner: '저녁',
+  snack: '간식'
+}
+
+const activityLevelNames: Record<string, string> = {
+  low: '낮음',
+  moderate: '보통',
+  high: '높음',
+  'very-high': '매우 높음'
+}
+
+const handleDeleteReport = async () => {
+  if (!reportData.value) return
+  
+  if (window.confirm('이 분석 레포트를 삭제하시겠습니까?')) {
+    try {
+      await reportApi.deleteReport(reportData.value.id)
+      alert('레포트가 삭제되었습니다.')
+      router.push('/my-page')
+    } catch (error: any) {
+      alert(showError(error))
+    }
+  }
+}
+
+const getScoreColor = (score: number) => {
+  if (score >= 90) return 'text-emerald-600'
+  if (score >= 75) return 'text-green-600'
+  if (score >= 60) return 'text-yellow-600'
+  if (score >= 40) return 'text-orange-600'
+  return 'text-red-600'
+}
+
+const getScoreGradient = (score: number) => {
+  if (score >= 90) return 'from-emerald-500 to-green-600'
+  if (score >= 75) return 'from-green-500 to-emerald-600'
+  if (score >= 60) return 'from-yellow-500 to-orange-500'
+  if (score >= 40) return 'from-orange-500 to-red-500'
+  return 'from-red-500 to-pink-600'
+}
 
 // Computed properties for display
 const analysisResult = computed(() => {
@@ -159,49 +225,7 @@ const analysisResult = computed(() => {
   }
 })
 
-const mealTimeNames = {
-  breakfast: '아침',
-  lunch: '점심',
-  dinner: '저녁',
-  snack: '간식'
-}
 
-const activityLevelNames = {
-  low: '낮음',
-  moderate: '보통',
-  high: '높음',
-  'very-high': '매우 높음'
-}
-
-const handleDeleteReport = async () => {
-  if (!reportData.value) return
-  
-  if (window.confirm('이 분석 레포트를 삭제하시겠습니까?')) {
-    try {
-      await reportApi.deleteReport(reportData.value.id)
-      alert('레포트가 삭제되었습니다.')
-      router.push('/my-page')
-    } catch (error: any) {
-      alert(showError(error))
-    }
-  }
-}
-
-const getScoreColor = (score: number) => {
-  if (score >= 90) return 'text-emerald-600'
-  if (score >= 75) return 'text-green-600'
-  if (score >= 60) return 'text-yellow-600'
-  if (score >= 40) return 'text-orange-600'
-  return 'text-red-600'
-}
-
-const getScoreGradient = (score: number) => {
-  if (score >= 90) return 'from-emerald-500 to-green-600'
-  if (score >= 75) return 'from-green-500 to-emerald-600'
-  if (score >= 60) return 'from-yellow-500 to-orange-500'
-  if (score >= 40) return 'from-orange-500 to-red-500'
-  return 'from-red-500 to-pink-600'
-}
 </script>
 
 <template>
@@ -227,7 +251,17 @@ const getScoreGradient = (score: number) => {
       >
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 class="text-gray-900">식단 분석 결과</h1>
-          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2">
+            <!-- Share Toggle -->
+            <button
+              @click="handleToggleShare"
+              class="flex items-center gap-2 px-4 py-2 rounded-xl transition-colors"
+              :class="isShared ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'"
+            >
+              <Share2 :size="20" />
+              <span class="text-sm font-bold">{{ isShared ? '공유 중' : '공유하기' }}</span>
+            </button>
+
             <button
               @click="router.push('/my-page')"
               class="flex items-center gap-2 px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
@@ -237,6 +271,7 @@ const getScoreGradient = (score: number) => {
             </button>
 
             <button
+              v-if="isOwner || isAdmin"
               @click="handleDeleteReport"
               class="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
             >
@@ -249,7 +284,7 @@ const getScoreGradient = (score: number) => {
 
       <!-- 분석 대기 중 알림 배너 -->
       <div 
-        v-if="analysisResult?.isWaited"
+        v-if="analysisResult?.isWaited && isOwner"
         class="bg-amber-50 border-y border-amber-200"
       >
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
@@ -265,7 +300,7 @@ const getScoreGradient = (score: number) => {
 
       <!-- 전문가 분석 완료 알림 배너 -->
       <div 
-        v-if="analysisResult?.expertId && !analysisResult?.isWaited"
+        v-if="analysisResult?.expertId && !analysisResult?.isWaited && isOwner"
         class="bg-blue-50 border-y border-blue-200"
       >
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -290,7 +325,7 @@ const getScoreGradient = (score: number) => {
 
       <!-- 당뇨 환자 경고 배너 -->
       <div 
-        v-if="analysisResult?.userInfo.isDiabetes"
+        v-if="analysisResult?.userInfo.isDiabetes && isOwner"
         class="bg-red-50 border-y border-red-200"
       >
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center gap-4">
@@ -571,21 +606,26 @@ const getScoreGradient = (score: number) => {
         :enter="{ opacity: 1, y: 0, transition: { delay: 600 } }"
         class="flex justify-center gap-4"
       >
-        <button
-          @click="router.push('/meal-management')"
-          class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl hover:shadow-lg transition-all hover:scale-105"
-        >
+        <button @click="router.push('/meal-management')" class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl hover:shadow-lg transition-all hover:scale-105">
           새로운 식단 분석하기
         </button>
-        <button
-          @click="router.push('/characters')"
-          class="px-8 py-4 bg-white text-emerald-600 border-2 border-emerald-500 rounded-2xl hover:bg-emerald-50 transition-all"
-        >
+        <button @click="router.push('/characters')" class="px-8 py-4 bg-white text-emerald-600 border-2 border-emerald-500 rounded-2xl hover:bg-emerald-50 transition-all">
           푸디 도감 보기
         </button>
       </div>
     </div>
+
+    <!-- Comments Section -->
+    <div v-if="isShared && reportData" class="max-w-6xl mx-auto px-4 pb-12">
+      <div class="bg-white rounded-3xl shadow-lg p-8">
+          <h2 class="text-gray-900 mb-6 flex items-center gap-2">
+              <MessageSquare :size="24" class="text-emerald-600"></MessageSquare>
+              식단 커뮤니티 댓글
+          </h2>
+          <CommentList :report-id="reportData.id"></CommentList>
+      </div>
     </div>
+
     <ChatModal 
       :is-open="isChatOpen"
       :report-id="analysisResult?.id"
@@ -593,6 +633,7 @@ const getScoreGradient = (score: number) => {
       :partner-name="analysisResult?.expertName"
       :user-id="analysisResult?.userId || ''"
       @close="isChatOpen = false"
-    />
+    ></ChatModal>
+    </div>
   </div>
 </template>

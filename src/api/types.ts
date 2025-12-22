@@ -234,6 +234,7 @@ export interface ReportResponse {
     comment: string
     characterId: number
     isWaited: boolean
+    isShared: boolean
     expertId?: string
     expertName?: string
 
@@ -278,6 +279,14 @@ export interface ReportDetailResponse {
     totalCarb: number
     totalProtein: number
     totalFat: number
+}
+
+export interface ReportComment {
+    id: number
+    reportId: number
+    author: string
+    comment: string
+    createdAt: string
 }
 
 // ============ Admin Types ============
