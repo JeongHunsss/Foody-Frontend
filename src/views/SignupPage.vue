@@ -52,6 +52,12 @@ const handleUsernameCheck = async () => {
     alert('아이디를 입력해주세요.')
     return
   }
+
+  const idRegex = /^[a-zA-Z0-9]+$/;
+  if (!idRegex.test(username.value)) {
+    alert('아이디는 영문과 숫자만 사용 가능합니다.')
+    return
+  }
   
   if (isCheckingUsername.value) return
   
@@ -272,7 +278,7 @@ const handleSubmit = async (e: Event) => {
                     id="username"
                     v-model="username"
                     type="text"
-                    placeholder="아이디 (4~20자)"
+                    placeholder="아이디 (영문, 숫자 4~20자)"
                     class="w-full pl-11 pr-4 py-3 border-2 border-emerald-100 rounded-xl focus:outline-none focus:border-emerald-400 transition-colors"
                     required
                     minlength="4"
