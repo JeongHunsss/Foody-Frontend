@@ -4,6 +4,7 @@ import { Client } from '@stomp/stompjs'
 import { chatApi, type ChatRoom, type ChatMessage } from '@/api/chat.api'
 import { X, Send } from 'lucide-vue-next'
 import ReportAnalysisPanel from './ReportAnalysisPanel.vue'
+import { useNotificationStore } from '@/stores/notification'
 
 const props = defineProps<{
   isOpen: boolean
@@ -13,6 +14,8 @@ const props = defineProps<{
   roomId?: string // 선택적 방 ID (관리자 화면용)
   partnerName?: string // 대화 상대방 이름
 }>()
+
+const notificationStore = useNotificationStore()
 
 const emit = defineEmits(['close', 'chat-ended'])
 
@@ -82,6 +85,10 @@ const initChat = async () => {
 
     const history = await chatApi.getMessages(room.value.id)
     messages.value = history
+    
+    // 이 채팅방에 대한 알림 지우기
+    notificationStore.clearNotificationsForRoom(room.value.id)
+    
     connectWebSocket()
     scrollToBottom()
   } catch (e) {
