@@ -172,6 +172,7 @@ onUnmounted(() => {
                 ? 'bg-emerald-100 text-emerald-700' 
                 : 'text-gray-700 hover:bg-gray-100'
             ]"
+            style="font-family: 'Pretendard', sans-serif;"
           >
             홈
           </button>
@@ -183,6 +184,7 @@ onUnmounted(() => {
                 ? 'bg-emerald-100 text-emerald-700' 
                 : 'text-gray-700 hover:bg-gray-100'
             ]"
+            style="font-family: 'Pretendard', sans-serif;"
           >
             식단 분석
           </button>
@@ -194,6 +196,7 @@ onUnmounted(() => {
                 ? 'bg-emerald-100 text-emerald-700' 
                 : 'text-gray-700 hover:bg-gray-100'
             ]"
+            style="font-family: 'Pretendard', sans-serif;"
           >
             좋아하는 음식
           </button>
@@ -205,6 +208,7 @@ onUnmounted(() => {
                 ? 'bg-emerald-100 text-emerald-700' 
                 : 'text-gray-700 hover:bg-gray-100'
             ]"
+            style="font-family: 'Pretendard', sans-serif;"
           >
             식단 커뮤니티
           </button>
@@ -216,6 +220,7 @@ onUnmounted(() => {
                 ? 'bg-emerald-100 text-emerald-700' 
                 : 'text-gray-700 hover:bg-gray-100'
             ]"
+            style="font-family: 'Pretendard', sans-serif;"
           >
             푸디 도감
           </button>
@@ -340,6 +345,7 @@ onUnmounted(() => {
               ? 'bg-emerald-50 text-emerald-700 font-medium' 
               : 'text-gray-700 hover:bg-gray-50'
           ]"
+          style="font-family: 'Pretendard', sans-serif;"
         >
           홈
         </button>
@@ -351,6 +357,7 @@ onUnmounted(() => {
               ? 'bg-emerald-50 text-emerald-700 font-medium' 
               : 'text-gray-700 hover:bg-gray-50'
           ]"
+          style="font-family: 'Pretendard', sans-serif;"
         >
           식단 분석
         </button>
@@ -362,6 +369,7 @@ onUnmounted(() => {
               ? 'bg-emerald-50 text-emerald-700 font-medium' 
               : 'text-gray-700 hover:bg-gray-50'
           ]"
+          style="font-family: 'Pretendard', sans-serif;"
         >
           좋아하는 음식
         </button>
@@ -373,6 +381,7 @@ onUnmounted(() => {
               ? 'bg-emerald-50 text-emerald-700 font-medium' 
               : 'text-gray-700 hover:bg-gray-50'
           ]"
+          style="font-family: 'Pretendard', sans-serif;"
         >
           식단 커뮤니티
         </button>
@@ -384,6 +393,7 @@ onUnmounted(() => {
               ? 'bg-emerald-50 text-emerald-700 font-medium' 
               : 'text-gray-700 hover:bg-gray-50'
           ]"
+          style="font-family: 'Pretendard', sans-serif;"
         >
           푸디 도감
         </button>

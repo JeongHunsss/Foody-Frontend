@@ -135,7 +135,7 @@ const goToMealManagement = () => {
               :class="[
                 'px-4 py-2 rounded-lg whitespace-nowrap transition-all duration-200',
                 selectedCategory === cat
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md transform scale-105'
+                  ? 'bg-emerald-500 text-white shadow-md'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               ]"
             >
@@ -155,8 +155,8 @@ const goToMealManagement = () => {
         <div class="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 text-emerald-500 rounded-full mb-6">
           <Heart :size="40" />
         </div>
-        <h3 class="text-2xl font-bold text-gray-800 mb-2">아직 찜한 음식이 없어요</h3>
-        <p class="text-gray-500 mb-8">자주 먹는 음식을 찜해두면 식단 기록이 더 편해져요!</p>
+        <h3 class="text-2xl font-bold text-gray-800 mb-2" style="font-family: 'PyeongtaekSemiconductor', sans-serif;">아직 찜한 음식이 없어요</h3>
+        <p class="text-gray-500 mb-8" style="font-family: 'Pretendard', sans-serif;">자주 먹는 음식을 찜해두면 식단 기록이 더 편해져요!</p>
         <button
           @click="goToMealManagement"
           class="inline-flex items-center gap-2 px-8 py-4 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-1"
