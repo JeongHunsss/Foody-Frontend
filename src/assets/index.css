@@ -1,162 +1,69 @@
-/* NanumSquare 폰트 */
 @font-face {
-  font-family: 'NanumSquare';
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Thin.woff2') format('woff2');
+  font-weight: 100;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraLight.woff2') format('woff2');
+  font-weight: 200;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Light.woff2') format('woff2');
   font-weight: 300;
-  font-style: normal;
-  src: url('/NanumSquareL.ttf') format('truetype');
+  font-display: swap;
 }
 
 @font-face {
-  font-family: 'NanumSquare';
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Regular.woff2') format('woff2');
   font-weight: 400;
-  font-style: normal;
-  src: url('/NanumSquareR.ttf') format('truetype');
+  font-display: swap;
 }
 
 @font-face {
-  font-family: 'NanumSquare';
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Bold.woff2') format('woff2');
   font-weight: 700;
-  font-style: normal;
-  src: url('/NanumSquareB.ttf') format('truetype');
+  font-display: swap;
 }
 
 @font-face {
-  font-family: 'NanumSquare';
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraBold.woff2') format('woff2');
   font-weight: 800;
-  font-style: normal;
-  src: url('/NanumSquareEB.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-display: swap;
 }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* 푸디 컨셉에 맞는 친근하고 귀여운 타이포그래피 */
-@layer base {
-
-  /* 전체 body 기본 스타일 */
-  body {
-    letter-spacing: -0.01em;
-  }
-
-  /* h1 - 큰 제목, ExtraBold로 강조 + 넉넉한 간격 */
-  h1 {
-    font-weight: 800 !important;
-    letter-spacing: -0.02em !important;
-    line-height: 1.3 !important;
-  }
-
-  /* h2 - 중간 제목, Bold + 적절한 자간 */
-  h2 {
-    font-weight: 700 !important;
-    letter-spacing: -0.015em !important;
-    line-height: 1.4 !important;
-  }
-
-  /* h3 - 작은 제목 */
-  h3 {
-    font-weight: 700 !important;
-    letter-spacing: -0.01em !important;
-    line-height: 1.4 !important;
-  }
-
-  /* h4 - 더 작은 제목 */
-  h4 {
-    font-weight: 600 !important;
-    letter-spacing: -0.005em !important;
-  }
-
-  /* 버튼 - 가독성 높이고 친근한 느낌 */
-  button {
-    font-weight: 700 !important;
-    letter-spacing: 0.01em !important;
-  }
-
-  /* 라벨 - 명확하게 */
-  label {
-    font-weight: 600 !important;
-    letter-spacing: -0.005em !important;
-  }
-
-  /* 강조 텍스트 */
-  strong,
-  b {
-    font-weight: 800 !important;
-  }
-
-  /* 본문 텍스트 - 읽기 편한 간격 */
-  p {
-    font-weight: 400;
-    line-height: 1.7 !important;
-    letter-spacing: -0.005em;
-  }
-
-  /* span과 div - 기본 */
-  span,
-  div {
-    letter-spacing: -0.003em;
-  }
-
-  /* 입력 필드 - Regular - 텍스트가 반드시 보이도록 강력하게 설정 */
-  input,
-  textarea,
-  select {
-    font-weight: 400 !important;
-    letter-spacing: -0.005em !important;
-    color: #1f2937 !important;
-    /* text-gray-800 - 더 진한 색으로 */
-  }
-
-  /* password 타입 input도 명시적으로 */
-  input[type="password"],
-  input[type="text"],
-  input[type="email"],
-  input[type="number"] {
-    color: #1f2937 !important;
-  }
-
-  /* password 필드는 시스템 폰트 사용 (한글 렌더링 개선) */
-  input[type="password"] {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif !important;
-  }
-
-  /* input placeholder 색상 */
-  input::placeholder,
-  textarea::placeholder,
-  select::placeholder {
-    color: #9ca3af !important;
-    /* text-gray-400 */
-    opacity: 0.6 !important;
-  }
-
-  /* 작은 텍스트 - Light로 경량감 */
-  small {
-    font-weight: 300;
-    letter-spacing: 0em;
-  }
-
-  /* Tailwind 텍스트 사이즈 클래스 */
-  .text-xs {
-    font-weight: 300 !important;
-  }
-
-  .text-sm {
-    font-weight: 400 !important;
-  }
-
-  .text-lg,
-  .text-xl,
-  .text-2xl {
-    font-weight: 700 !important;
-    letter-spacing: -0.015em !important;
-  }
-
-  .text-3xl,
-  .text-4xl {
-    font-weight: 800 !important;
-    letter-spacing: -0.02em !important;
-  }
-}
 
 /*! tailwindcss v4.1.3 | MIT License | https://tailwindcss.com */
 @layer properties {
@@ -235,7 +142,7 @@
 
   :root,
   :host {
-    --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-sans: 'Pretendard', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --color-red-50: oklch(.971 .013 17.38);
     --color-red-100: oklch(.936 .032 17.717);
@@ -666,7 +573,6 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: 'NanumSquare', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
