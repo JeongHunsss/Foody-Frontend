@@ -733,7 +733,6 @@ onMounted(async () => {
               </button>
             </div>
             <div class="flex items-center gap-2">
-              <span class="text-sm text-gray-600">페이지:</span>
               <button
                 @click="handlePageChange(currentPage - 1)"
                 :disabled="currentPage === 1"
