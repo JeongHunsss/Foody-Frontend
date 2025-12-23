@@ -796,7 +796,7 @@ onMounted(async () => {
                 <div v-if="!report.isWaited" class="flex flex-col">
                   <span class="text-sm text-gray-500 font-medium mb-1">나의 식단 점수</span>
                   <div class="flex items-baseline gap-2">
-                    <div class="text-4xl font-bold text-emerald-600">{{ report.score }}</div>
+                    <div class="text-4xl font-bold text-emerald-600" style="font-family: 'YeogiOttaeJalnan', sans-serif;">{{ report.score }}</div>
                     <div class="text-lg text-gray-400 font-medium">점</div>
                   </div>
                 </div>
