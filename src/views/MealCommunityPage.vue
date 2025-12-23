@@ -3,29 +3,24 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { reportApi } from '@/api/report.api'
 import type { ReportResponse } from '@/api/types'
-import { MessageCircle } from 'lucide-vue-next'
+import { MessageCircle, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import Navbar from '@/components/Navbar.vue'
 
 const router = useRouter()
   const reports = ref<ReportResponse[]>([])
   const isLoading = ref(false)
-  const page = ref(1)
-  const hasNextPage = ref(true)
+  const currentPage = ref(1)
+  const totalPages = ref(1)
 
-  const fetchSharedReports = async () => {
-    if (isLoading.value || !hasNextPage.value) return
+  const fetchSharedReports = async (pageNum: number = 1) => {
+    if (isLoading.value) return
     
     isLoading.value = true
     try {
-      const response = await reportApi.getSharedReportList(page.value)
-      if (page.value === 1) {
-        reports.value = response.content
-      } else {
-        reports.value.push(...response.content)
-      }
-      
-      hasNextPage.value = page.value < response.totalPages
-      page.value++
+      const response = await reportApi.getSharedReportList(pageNum)
+      reports.value = response.content
+      totalPages.value = response.totalPages
+      currentPage.value = pageNum
     } catch (error) {
       console.error('Failed to fetch community feed', error)
     } finally {
@@ -37,16 +32,19 @@ const router = useRouter()
     return new Date(dateString).toLocaleDateString()
   }
 
-  // Infinite scroll handler (simple version)
-  const handleScroll = (e: Event) => {
-    const target = e.target as HTMLElement
-    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
-      fetchSharedReports()
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages.value && newPage !== currentPage.value) {
+      fetchSharedReports(newPage)
+      // Scroll to top when page changes
+      const mainElement = document.querySelector('main')
+      if (mainElement) {
+        mainElement.scrollTop = 0
+      }
     }
   }
 
   onMounted(() => {
-    fetchSharedReports()
+    fetchSharedReports(1)
   })
 </script>
 
@@ -56,12 +54,36 @@ const router = useRouter()
     <Navbar></Navbar>
 
     <!-- Content -->
-    <main 
-      class="flex-1 overflow-y-auto p-4 space-y-4 pb-20"
-      @scroll="handleScroll"
-    >
-      <div class="max-w-xl mx-auto space-y-4">
-        <h1 class="text-2xl font-bold text-gray-900 px-2 py-4">식단 커뮤니티</h1>
+    <main class="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+      <div class="max-w-5xl mx-auto space-y-4">
+        <div class="flex items-center justify-between px-2 py-4">
+          <h1 class="text-2xl font-bold text-gray-900" style="font-family: 'YeogiOttaeJalnan', sans-serif;">식단 커뮤니티</h1>
+          
+          <!-- Pagination Controls -->
+          <div v-if="!isLoading && reports.length > 0" class="flex items-center gap-3 bg-gray-100 rounded-lg px-4 py-2">
+            <button
+              @click="handlePageChange(currentPage - 1)"
+              :disabled="currentPage === 1"
+              class="text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="이전 페이지"
+            >
+              <ChevronLeft :size="18" />
+            </button>
+            
+            <span class="text-sm text-gray-700 font-medium">
+              {{ currentPage }} / {{ totalPages }}
+            </span>
+            
+            <button
+              @click="handlePageChange(currentPage + 1)"
+              :disabled="currentPage === totalPages"
+              class="text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="다음 페이지"
+            >
+              <ChevronRight :size="18" />
+            </button>
+          </div>
+        </div>
         
         <div 
           v-for="report in reports" 
@@ -80,7 +102,7 @@ const router = useRouter()
               </div>
             </div>
             <div class="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full text-lg font-bold">
-              {{ report.score }}점
+              {{ report.score }} 점
             </div>
           </div>
 
@@ -88,27 +110,27 @@ const router = useRouter()
           <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
             <div class="bg-purple-50 rounded-xl p-3 text-center">
               <p class="text-xs text-purple-600 font-bold mb-1">칼로리</p>
-              <p class="text-sm font-bold text-gray-800">{{ Math.round(report.totalKcal) }}</p>
+              <p class="text-sm font-bold text-gray-800" style="font-family: 'Pretendard'">{{ Math.round(report.totalKcal) }}</p>
             </div>
             <div class="bg-blue-50 rounded-xl p-3 text-center">
               <p class="text-xs text-blue-600 font-bold mb-1">탄수화물</p>
-              <p class="text-sm font-bold text-gray-800">{{ Math.round(report.totalCarb) }}g</p>
+              <p class="text-sm font-bold text-gray-800" style="font-family: 'Pretendard'">{{ Math.round(report.totalCarb) }}g</p>
             </div>
             <div class="bg-emerald-50 rounded-xl p-3 text-center">
               <p class="text-xs text-emerald-600 font-bold mb-1">단백질</p>
-              <p class="text-sm font-bold text-gray-800">{{ Math.round(report.totalProtein) }}g</p>
+              <p class="text-sm font-bold text-gray-800" style="font-family: 'Pretendard'">{{ Math.round(report.totalProtein) }}g</p>
             </div>
             <div class="bg-orange-50 rounded-xl p-3 text-center">
               <p class="text-xs text-orange-600 font-bold mb-1">지방</p>
-              <p class="text-sm font-bold text-gray-800">{{ Math.round(report.totalFat) }}g</p>
+              <p class="text-sm font-bold text-gray-800" style="font-family: 'Pretendard'">{{ Math.round(report.totalFat) }}g</p>
             </div>
             <div class="bg-pink-50 rounded-xl p-3 text-center">
               <p class="text-xs text-pink-600 font-bold mb-1">당류</p>
-              <p class="text-sm font-bold text-gray-800">{{ Math.round(report.totalSugar || 0) }}g</p>
+              <p class="text-sm font-bold text-gray-800" style="font-family: 'Pretendard'">{{ Math.round(report.totalSugar || 0) }}g</p>
             </div>
             <div class="bg-indigo-50 rounded-xl p-3 text-center">
               <p class="text-xs text-indigo-600 font-bold mb-1">나트륨</p>
-              <p class="text-sm font-bold text-gray-800">{{ Math.round(report.totalNatrium || 0) }}g</p>
+              <p class="text-sm font-bold text-gray-800" style="font-family: 'Pretendard'">{{ Math.round(report.totalNatrium || 0) }}g</p>
             </div>
           </div>
 
