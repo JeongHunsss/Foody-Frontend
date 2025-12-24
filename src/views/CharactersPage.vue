@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { RouterLink, useRouter } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
 import Navbar from '@/components/Navbar.vue'
 import logoImage from '@/assets/foody_logo.png'
 import { characterApi } from '@/api/character.api'
 import { showError } from '@/utils/errorHandler'
+import { useAuthStore } from '@/stores/auth'
 
 // Import character images
 import foodyEggImage from '@/assets/characters/foody_egg.png'
@@ -59,9 +61,18 @@ const colorMap: Record<number, string> = {
   10: "from-pink-400 to-rose-500"
 }
 
+const authStore = useAuthStore()
+const { isLoggedIn } = storeToRefs(authStore)
+
 const viewMode = ref<'all' | 'my'>('my')
 
 const loadCharacters = async () => {
+  // If in 'my' mode and not logged in, we verify this state in template, but prevent API call here
+  if (viewMode.value === 'my' && !authStore.isLoggedIn) {
+    isLoading.value = false
+    return
+  }
+  
   isLoading.value = true
   errorMessage.value = ''
 
@@ -88,6 +99,8 @@ const loadCharacters = async () => {
     isLoading.value = false
   }
 }
+
+const router = useRouter()
 
 const setViewMode = (mode: 'all' | 'my') => {
   viewMode.value = mode
@@ -155,8 +168,33 @@ onMounted(() => {
         </div>
       </div>
 
+      <div v-if="viewMode === 'my' && !isLoggedIn" class="text-center py-20 bg-white/50 backdrop-blur-sm rounded-3xl border border-emerald-100 shadow-md">
+        <div class="mb-6">
+          <Sparkles :size="48" class="text-emerald-400 mx-auto mb-4" />
+          <h3 class="text-2xl font-bold text-gray-800 mb-3">로그인이 필요한 서비스입니다</h3>
+          <p class="text-gray-600 mb-8">
+            회원가입을 하고 나만의 푸디 도감을 채워보세요!<br>
+            다양한 식단 분석을 통해 새로운 캐릭터를 만날 수 있어요.
+          </p>
+        </div>
+        <div class="flex justify-center gap-4">
+          <button
+            @click="router.push('/login')"
+            class="px-8 py-3 bg-white text-emerald-600 border-2 border-emerald-100 rounded-xl font-bold hover:bg-emerald-50 transition-colors"
+          >
+            로그인
+          </button>
+          <button
+            @click="router.push('/signup')"
+            class="px-8 py-3 bg-gradient-to-r from-emerald-400 to-teal-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+          >
+            회원가입 하러가기
+          </button>
+        </div>
+      </div>
+
       <!-- Characters Grid -->
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <div
           v-for="(character, index) in characters"
           :key="character.id"
