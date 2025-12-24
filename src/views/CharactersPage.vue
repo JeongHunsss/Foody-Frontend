@@ -59,12 +59,19 @@ const colorMap: Record<number, string> = {
   10: "from-pink-400 to-rose-500"
 }
 
+const viewMode = ref<'all' | 'my'>('my')
+
 const loadCharacters = async () => {
   isLoading.value = true
   errorMessage.value = ''
 
   try {
-    const data = await characterApi.getAllCharacters()
+    let data;
+    if (viewMode.value === 'my') {
+      data = await characterApi.getMyCharacters()
+    } else {
+      data = await characterApi.getAllCharacters()
+    }
     
     // 백엔드 데이터에 이미지와 색상 추가
     characters.value = data.map(char => ({
@@ -80,6 +87,11 @@ const loadCharacters = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const setViewMode = (mode: 'all' | 'my') => {
+  viewMode.value = mode
+  loadCharacters()
 }
 
 onMounted(() => {
@@ -113,6 +125,34 @@ onMounted(() => {
         <p class="text-xl text-gray-600 max-w-2xl mx-auto">
           당신의 식단에 따라 다양한 푸디로 변신해요!<br>각 푸디는 특별한 식습관을 대표한답니다.
         </p>
+      </div>
+
+      <!-- View Mode Toggle -->
+      <div class="flex justify-center mb-12">
+        <div class="bg-white/50 backdrop-blur-sm p-1 rounded-full border border-emerald-100 shadow-sm inline-flex">
+          <button
+            @click="setViewMode('my')"
+            :class="[
+              'px-6 py-2 rounded-full text-sm font-medium transition-all duration-200',
+              viewMode === 'my'
+                ? 'bg-emerald-500 text-white shadow-md'
+                : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
+            ]"
+          >
+            나의 도감
+          </button>
+          <button
+            @click="setViewMode('all')"
+            :class="[
+              'px-6 py-2 rounded-full text-sm font-medium transition-all duration-200',
+              viewMode === 'all'
+                ? 'bg-emerald-500 text-white shadow-md'
+                : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
+            ]"
+          >
+            전체 보기
+          </button>
+        </div>
       </div>
 
       <!-- Characters Grid -->

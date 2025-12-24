@@ -11,5 +11,13 @@ export const characterApi = {
     async getAllCharacters(): Promise<CharacterResponse[]> {
         const response = await apiClient.get<CharacterResponse[]>('/character')
         return response.data
+    },
+
+    /**
+     * 내 캐릭터 조회
+     */
+    async getMyCharacters(): Promise<CharacterResponse[]> {
+        const response = await apiClient.get<CharacterResponse[]>('/character/my-foody')
+        return response.data
     }
 }
